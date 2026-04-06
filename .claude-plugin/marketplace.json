@@ -7,7 +7,7 @@
     "name": "Dmitry Nuzhin"
   },
   "metadata": {
-    "description": "iOS development toolkit with specialized agents for architecture, development, code review, refactoring, and testing. Covers UIKit, SwiftUI, Combine, RxSwift, Swinject DI, and patterns (MVVM, VIPER, Clean Architecture, Coordinator)."
+    "description": "iOS development toolkit with specialized agents for architecture, development, code review, refactoring, and testing. Covers UIKit, SwiftUI, Swift Concurrency (async/await), Combine, RxSwift, Swinject DI, and patterns (MVVM, VIPER, Clean Architecture, Coordinator)."
   },
   "plugins": [
     {
@@ -20,7 +20,7 @@
       "source": "./",
       "repository": "https://github.com/iruirc/ios-toolkit",
       "category": "development",
-      "keywords": ["ios", "swift", "swiftui", "uikit", "combine", "rxswift"]
+      "keywords": ["ios", "swift", "swiftui", "uikit", "async-await", "combine", "rxswift"]
     }
   ]
 }
