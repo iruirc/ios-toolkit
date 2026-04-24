@@ -18,7 +18,7 @@
         "name": "Dmitry Nuzhin"
       },
       "source": "./",
-      "repository": "https://github.com/iruirc/ios-toolkit",
+      "repository": "https://github.com/iruirc/swift-toolkit",
       "category": "development",
       "keywords": ["swift", "ios", "macos", "spm", "swiftui", "uikit", "async-await", "combine", "rxswift"]
     }
