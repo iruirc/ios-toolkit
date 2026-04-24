@@ -1,26 +1,26 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "ios-toolkit",
-  "version": "1.2.0",
-  "description": "iOS development toolkit with specialized agents for architecture, development, code review, refactoring, and testing",
+  "name": "swift-toolkit",
+  "version": "2.0.0",
+  "description": "Swift/Apple development toolkit with specialized agents for architecture, development, code review, refactoring, testing, diagnostics, security, and project initialization",
   "owner": {
     "name": "Dmitry Nuzhin"
   },
   "metadata": {
-    "description": "iOS development toolkit with specialized agents for architecture, development, code review, refactoring, and testing. Covers UIKit, SwiftUI, Swift Concurrency (async/await), Combine, RxSwift, Swinject DI, and patterns (MVVM, VIPER, Clean Architecture, Coordinator)."
+    "description": "Swift/Apple development toolkit covering iOS, macOS, SPM packages. Includes architect, developer, reviewer, refactorer, tester, diagnostics, security, init agents. Covers UIKit, SwiftUI, Swift Concurrency (async/await), Combine, RxSwift, Swinject DI, and patterns (MVVM, VIPER, Clean Architecture, Coordinator)."
   },
   "plugins": [
     {
-      "name": "ios-toolkit",
-      "description": "iOS development toolkit with architect, developer, reviewer, refactorer, and tester agents",
-      "version": "1.2.0",
+      "name": "swift-toolkit",
+      "description": "Swift/Apple development toolkit with architect, developer, reviewer, refactorer, tester, diagnostics, security, and init agents plus task management skills",
+      "version": "2.0.0",
       "author": {
         "name": "Dmitry Nuzhin"
       },
       "source": "./",
       "repository": "https://github.com/iruirc/ios-toolkit",
       "category": "development",
-      "keywords": ["ios", "swift", "swiftui", "uikit", "async-await", "combine", "rxswift"]
+      "keywords": ["swift", "ios", "macos", "spm", "swiftui", "uikit", "async-await", "combine", "rxswift"]
     }
   ]
 }

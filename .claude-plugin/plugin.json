@@ -1,7 +1,7 @@
 {
-  "name": "ios-toolkit",
-  "description": "iOS development toolkit with specialized agents for architect, developer, reviewer, refactorer, and tester roles. Covers UIKit, SwiftUI, Swift Concurrency (async/await), Combine, RxSwift, Swinject DI, and architecture patterns (MVVM, VIPER, Clean Architecture, Coordinator).",
-  "version": "1.2.0",
+  "name": "swift-toolkit",
+  "description": "Swift/Apple development toolkit with specialized agents for architecture, development, code review, refactoring, testing, diagnostics, security, and project initialization. Covers iOS, macOS, SPM packages, UIKit, SwiftUI, Swift Concurrency, Combine, RxSwift, Swinject DI, and architecture patterns (MVVM, VIPER, Clean Architecture, Coordinator).",
+  "version": "2.0.0",
   "author": {
     "name": "Dmitry Nuzhin"
   },
