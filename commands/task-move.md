@@ -1,5 +1,5 @@
 ---
-description: Переместить задачу в другой статус (физический mv папки или смена [STATUS] для step)
+description: Переместить задачу в другой статус
 argument-hint: <id> <STATUS>
 ---
 
