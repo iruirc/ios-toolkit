@@ -70,6 +70,7 @@ Consult the appropriate skill based on the architecture in use:
 - `error-architecture` — choosing per-layer error types, writing mappers, building UserMessage in ViewModel, cancellation handling
 - `net-architecture` — implementing HTTPClient/APIClient, auth interceptor with token refresh, retry policy (idempotency-aware), pagination, mocking via URLProtocol
 - `net-openapi` — wiring `swift-openapi-generator`, wrapping generated `Client` in your `APIClient` protocol, mapping `Output` enums to domain errors
+- `persistence-architecture` — implementing Repository over Core Data / SwiftData / GRDB / Realm, background-context discipline (`performBackgroundTask` / `@ModelActor` / `DatabasePool.write`), Storage → Domain mapping, registering migrations, in-memory store for tests
 - `di-swinject` — dependency injection patterns (Swinject-specific)
 - `di-composition-root` — where to wire new services (CR layout, bootstrap)
 - `di-module-assembly` — Factory pattern, Assembly, non-UI factories, late initialization

@@ -88,6 +88,7 @@ Consult the appropriate skill when refactoring:
 - `error-architecture` — extracting ErrorMapper functions, splitting god `AppError`, replacing leaked `URLError.localizedDescription` with proper `UserMessage`
 - `net-architecture` — extracting `URLSession.shared` calls into HTTPClient protocol, hoisting middleware out of endpoints, removing duplicated decoders
 - `net-openapi` — replacing hand-written API clients with generated client + adapter when OpenAPI spec exists
+- `persistence-architecture` — extracting `NSManagedObject` / `@Model` / Realm objects out of ViewModels behind a Repository protocol, splitting one-context-for-everything into viewContext + background contexts, introducing a migration plan into a project that grew without one, replacing `UserDefaults`-as-database with proper storage
 - `di-swinject` — DI registration for extracted services
 - `di-composition-root` — extracting CR concerns out of fat AppDelegate/SceneDelegate
 - `di-module-assembly` — Factory pattern, Assembly, non-UI factories

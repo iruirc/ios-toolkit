@@ -12,6 +12,7 @@ Decisions about **where errors live, how they flow between layers, and how they 
 > - `di-composition-root` — where `ErrorMapper`, `Logger`, crash-reporter are bootstrapped
 > - `reactive-combine`, `reactive-rxswift` — reactive-framework error semantics (this skill covers cross-cutting decisions only)
 > - `arch-mvc` — for small apps you can collapse mapping into one layer (Controller); rules below still apply
+> - `net-architecture`, `persistence-architecture` — boundaries that produce errors mapped here (network errors, storage errors, migration failures)
 
 ## Why This Skill Exists
 

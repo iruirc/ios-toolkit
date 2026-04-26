@@ -49,6 +49,7 @@ Audit source code, infrastructure (Info.plist, entitlements, xcconfig), dependen
 - `error-architecture` — PII redaction in logs, never leaking server error bodies / stack traces / tokens to user-facing messages
 - `net-architecture` — auth interceptor design (single-flight refresh actor), retry policy that never auto-retries non-idempotent POST, cache poisoning via `URLCache` with `Authorization`
 - `net-openapi` — generated client middleware for token injection, no committed generated code containing secrets, `accessModifier: internal` to keep auth surfaces from leaking
+- `persistence-architecture` — encryption at rest (`NSFileProtectionComplete` on store file, SQLCipher with GRDB, Realm encryption key in Keychain), tokens/PII NEVER in `UserDefaults` or unencrypted Core Data / SQLite, jailbreak/backup readability of plaintext DB files, CloudKit-synced data classification, Keychain access control (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`)
 
 ## Related Agents (swift-toolkit)
 

@@ -14,6 +14,7 @@ Decisions about **how the network layer is shaped** in an iOS app: layering, the
 > - `di-module-assembly` — registering networking services into feature modules
 > - `reactive-combine`, `reactive-rxswift` — bridging async/await network calls into reactive pipelines
 > - `net-openapi` — generating typed clients from OpenAPI specs (Apple's `swift-openapi-generator`)
+> - `persistence-architecture` — pairing remote source with a local cache (offline-first, read-through, observe-with-refresh)
 
 ## Why This Skill Exists
 

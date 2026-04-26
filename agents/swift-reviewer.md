@@ -267,6 +267,7 @@ Consult these skills when reviewing code against architectural / framework expec
 - `error-architecture` — per-layer error type discipline, mapper purity, presentation policy, PII in logs, CancellationError handling
 - `net-architecture` — HTTPClient/APIClient boundary integrity, interceptor ordering, retry-on-non-idempotent (POST without idempotency-key) red flag, JSON decoding leaking into ViewModel
 - `net-openapi` — generated types not leaked past adapter, `.undocumented` handled, `accessModifier: internal`, no committed generated code
+- `persistence-architecture` — Repository boundary integrity (no `NSManagedObject` / `@Model` / Realm objects past it), main-thread writes / one-context-for-everything red flags, missing or unsafe migration plan, `UserDefaults` for non-trivial / sensitive data, hard-delete without tombstone in synced data
 - `di-swinject` — DI scopes, Assembly wiring, Service Locator anti-patterns
 - `di-composition-root` — what belongs in CR vs not, bootstrap correctness, scope leaks
 - `di-module-assembly` — Factory pattern, protocol seams, late initialization patterns
