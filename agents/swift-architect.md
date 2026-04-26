@@ -79,6 +79,7 @@ Consult the appropriate skill based on the architecture in use:
 - `mvc` — MVC pattern
 - `rxswift` — RxSwift patterns and best practices
 - `combine` — Combine framework patterns
+- `error-architecture` — per-layer error types, mapping (Network → Domain → UI), presentation strategy, recoverable/fatal classification
 - `swinject` — dependency injection patterns (Swinject-specific)
 - `composition-root` — Composition Root design, bootstrap strategies, scope management
 - `module-assembly` — Factory pattern, Assembly, non-UI factories, late initialization

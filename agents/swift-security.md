@@ -46,6 +46,7 @@ Audit source code, infrastructure (Info.plist, entitlements, xcconfig), dependen
 - `swinject`, `composition-root`, `module-assembly` — for reviewing DI-injected keychain/auth services and where they get bootstrapped
 - `spm-package-design` — auditing public surface of auth/credentials packages
 - `combine`, `rxswift` — for token refresh streams and subscription leaks that affect auth
+- `error-architecture` — PII redaction in logs, never leaking server error bodies / stack traces / tokens to user-facing messages
 
 ## Related Agents (swift-toolkit)
 

@@ -101,6 +101,7 @@ When `NEED_TEST = false` in the task, do not generate tests — validate behavio
 Consult the appropriate skill for testing patterns:
 - `rxswift` — testing RxSwift code with RxTest/RxBlocking
 - `combine` — testing Combine code with expectations
+- `error-architecture` — testing error paths: golden mapper tables, ViewModel UserMessage assertions, cancellation silence
 - `swinject` — test container configuration
 - `composition-root` — smoke tests for CR (registrations, bootstrap timing)
 - `module-assembly` — testing with mock Factories and Assemblies

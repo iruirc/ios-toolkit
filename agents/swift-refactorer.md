@@ -85,6 +85,7 @@ Consult the appropriate skill when refactoring:
 - `mvc` — MVC pattern
 - `rxswift` — simplifying RxSwift chains
 - `combine` — simplifying Combine chains
+- `error-architecture` — extracting ErrorMapper functions, splitting god `AppError`, replacing leaked `URLError.localizedDescription` with proper `UserMessage`
 - `swinject` — DI registration for extracted services
 - `composition-root` — extracting CR concerns out of fat AppDelegate/SceneDelegate
 - `module-assembly` — Factory pattern, Assembly, non-UI factories

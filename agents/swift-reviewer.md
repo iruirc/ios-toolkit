@@ -264,6 +264,7 @@ Consult these skills when reviewing code against architectural / framework expec
 - `mvc` — MVC boundaries
 - `rxswift` — RxSwift idioms, disposal, threading, Driver/Signal usage
 - `combine` — Combine idioms, subscription storage, schedulers
+- `error-architecture` — per-layer error type discipline, mapper purity, presentation policy, PII in logs, CancellationError handling
 - `swinject` — DI scopes, Assembly wiring, Service Locator anti-patterns
 - `composition-root` — what belongs in CR vs not, bootstrap correctness, scope leaks
 - `module-assembly` — Factory pattern, protocol seams, late initialization patterns

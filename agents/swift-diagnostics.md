@@ -65,6 +65,7 @@ Produce the Output Structure below. Wait for explicit user confirmation (`ok`, `
 ## Skills Reference (swift-toolkit)
 
 - `rxswift`, `combine` — framework-specific leak/threading patterns
+- `error-architecture` — diagnosing leaked low-level errors, broken mapping, swallowed catches, CancellationError shown as user error
 - `swinject`, `composition-root`, `module-assembly` — DI configuration bugs (registrations, scope mismatches, async bootstrap races)
 - `spm-package-design` — bugs caused by package boundary violations (DI-framework version conflicts, leaked internal state)
 - `mvvm`, `viper`, `clean-architecture`, `coordinator`, `swiftui-navigation` — layer-violation detection (Coordinator for UIKit, swiftui-navigation for SwiftUI Router/Path bugs)

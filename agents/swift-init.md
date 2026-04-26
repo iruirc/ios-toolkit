@@ -110,6 +110,7 @@ Consult the relevant skill when scaffolding. The skill body defines the folder s
 - `spm-package-design` — 4 архетипа SPM-пакетов (Feature / Library / API-Contract / Engine-SDK) с правилами публичности
 - `rxswift` — RxSwift initial imports, DisposeBag setup, Resources subclass if present
 - `combine` — Combine imports, AnyCancellable storage patterns
+- `error-architecture` — структура per-layer Error enum-ов, базовый `UserMessage`/`ErrorMapper`, политики logging/PII в шаблоне
 
 If the user's chosen architecture is ambiguous or missing, ASK before scaffolding; do not invent structure.
 
