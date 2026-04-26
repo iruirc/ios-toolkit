@@ -82,7 +82,8 @@ Consult the appropriate skill based on the architecture in use:
 - `error-architecture` — per-layer error types, mapping (Network → Domain → UI), presentation strategy, recoverable/fatal classification
 - `net-architecture` — designing the network layer (HTTPClient/APIClient boundary, interceptors, retry, pagination, framework comparison URLSession/Alamofire/Moya/Get)
 - `net-openapi` — when API has an OpenAPI spec; generated client + adapter pattern, custom transports, server stubs
-- `persistence-architecture` — designing local storage (Core Data / SwiftData / GRDB / Realm decision, Repository as boundary, threading model, migration strategy, CloudKit sync, encryption at rest)
+- `persistence-architecture` — designing local storage (Core Data / SwiftData / GRDB / Realm decision, Repository as boundary, threading model, CloudKit sync, encryption at rest)
+- `persistence-migrations` — choosing migration strategy at design time (lightweight vs heavyweight, when to chain adjacent pairs, transformable Codable evolution policy: evolutionary / lazy / proactive / versioned envelope), planning long-migration UX and recovery flow on day one
 - `di-swinject` — dependency injection patterns (Swinject-specific)
 - `di-composition-root` — Composition Root design, bootstrap strategies, scope management
 - `di-module-assembly` — Factory pattern, Assembly, non-UI factories, late initialization

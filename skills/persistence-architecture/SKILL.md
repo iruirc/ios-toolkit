@@ -1,6 +1,6 @@
 ---
 name: persistence-architecture
-description: "Use when designing local data storage in an iOS app — choosing between Core Data, SwiftData, GRDB/SQLite, Realm, UserDefaults, file storage; Repository as the boundary that hides the framework; migrations (lightweight/heavyweight/SwiftData VersionedSchema/GRDB DatabaseMigrator); background contexts and threading; reactive queries; CloudKit sync; encryption / file protection; in-memory testing strategies."
+description: "Use when designing local data storage in an iOS app — choosing between Core Data, SwiftData, GRDB/SQLite, Realm, UserDefaults, file storage; Repository as the boundary that hides the framework; background contexts and threading; reactive queries; write patterns and conflict handling; CloudKit sync; encryption / file protection; in-memory testing strategies. For schema migrations see `persistence-migrations`."
 ---
 
 # Persistence Architecture
@@ -8,6 +8,7 @@ description: "Use when designing local data storage in an iOS app — choosing b
 Decisions about **where data lives, how it survives app launches, and how the rest of the app talks to it**. Not a tutorial on Core Data fetch requests — this skill tells you **how to wire any persistence framework into a layered architecture** that survives upgrades, threading, and framework swaps.
 
 > **Related skills:**
+> - `persistence-migrations` — schema migrations (lightweight/heavyweight, NSEntityMigrationPolicy, SwiftData VersionedSchema, GRDB DatabaseMigrator), transformable Codable payload evolution, progressive chains, long-migration UX, failure recovery, fixture tests
 > - `arch-clean`, `arch-mvvm`, `arch-viper` — which layer the persistence layer reports into
 > - `error-architecture` — error mapping at the storage boundary, conflict resolution, recoverable vs fatal classification
 > - `net-architecture` — pairing remote source + local cache (offline-first, sync, ETag/conditional GET)
@@ -119,7 +120,7 @@ If most checks land on the right column → transformable Data. If even one impo
 
 Cheap to introduce, but they have specific failure modes you must own:
 
-1. **Schema drift inside the blob** — Core Data sees only bytes; renaming/removing/retyping a Codable field silently breaks decode for all existing rows. See *Migrations / Migrating transformable Codable payloads* for the four mitigation approaches.
+1. **Schema drift inside the blob** — Core Data sees only bytes; renaming/removing/retyping a Codable field silently breaks decode for all existing rows. See `persistence-migrations` / *Migrating transformable Codable payloads* for the four mitigation approaches.
 2. **Not searchable via predicate** — `predicate = NSPredicate(format: "sequence.startBeat == %d", ...)` returns nothing useful. Decoding the blob in memory just to filter defeats the purpose of a database.
 3. **Whole-blob writes** — touching one inner field rewrites the entire payload. Fine at tens of bytes, slow at hundreds of KB.
 4. **No referential integrity** — if the blob holds an `id` of another entity, the database can't enforce the foreign key.
@@ -175,7 +176,7 @@ let storeURL = groupURL.appendingPathComponent("Model.sqlite")
 Caveats:
 
 - **Multiple processes hitting the same SQLite file** can corrupt it without proper coordination. Core Data handles cross-process notifications **only** if you enable Persistent History Tracking — see the dedicated section below. GRDB uses SQLite WAL mode by default — concurrent reads safe, concurrent writes serialised.
-- **Schema migrations across processes** — the extension may launch first after install/update and trigger migration. The main app on next launch will see an already-migrated store. Migration logic must be idempotent.
+- **Schema migrations across processes** — the extension may launch first after install/update and trigger migration. The main app on next launch will see an already-migrated store. Migration logic must be idempotent. See `persistence-migrations` / *Cross-process migration*.
 - **App Group container survives uninstall** in some configurations on iCloud — different from the main bundle's Documents.
 
 ## The Repository Boundary
@@ -677,404 +678,14 @@ Same caveat: re-fires on any change to the entity type — fine for lists, waste
 
 ## Migrations
 
-Apps live for years. Schema changes are not optional — plan for them on day one.
+Schema evolution is a separate concern with its own mental model: lightweight vs heavyweight, `NSEntityMigrationPolicy`, SwiftData `VersionedSchema`/`MigrationStage`, GRDB `DatabaseMigrator`, transformable Codable payloads, progressive chains, long-migration UX, atomic backup, failure recovery, fixture-based tests.
 
-### Core Data — lightweight vs heavyweight
+→ **See `persistence-migrations` skill.** Applies whenever a shipped schema changes, a transformable Codable payload changes, or a heavyweight migration needs to run on the launch path.
 
-**Lightweight** (free, automatic) supports:
-- Adding/removing optional attributes
-- Renaming via «Renaming Identifier» in the model editor
-- Adding/removing relationships
-- Changing optional ↔ default value
-
-Set both flags when constructing the container:
-
-```swift
-let description = container.persistentStoreDescriptions.first!
-description.shouldMigrateStoreAutomatically = true
-description.shouldInferMappingModelAutomatically = true
-```
-
-**Heavyweight** is needed for any change lightweight inference can't figure out:
-
-- Split entity (one `Person` → `User` + `Profile`).
-- Merge entities (`HomeAddress` + `WorkAddress` → `Address` with `kind`).
-- Type change requiring conversion (`String` storing ISO date → `Date`).
-- Polymorphic split (one entity with `kind` enum → 4 entities, or vice versa).
-- Computed defaults from existing data (set `displayName` from `firstName + lastName`).
-- Renaming an entity (renaming an attribute is lightweight via «Renaming Identifier»).
-
-#### Step-by-step
-
-1. **Add a new model version**: in Xcode select `.xcdatamodeld` → `Editor → Add Model Version` → make it current via the file inspector.
-2. **Create a Mapping Model**: `File → New → Mapping Model`, pick source and destination versions. Xcode infers what it can. For each entity that needs custom logic — change its `Custom Policy` to your `NSEntityMigrationPolicy` subclass.
-3. **Write the policy** (only for entities that need it):
-
-```swift
-final class PersonToUserAndProfilePolicy: NSEntityMigrationPolicy {
-    override func createDestinationInstances(forSource sInstance: NSManagedObject,
-                                             in mapping: NSEntityMapping,
-                                             manager: NSMigrationManager) throws {
-        let ctx = manager.destinationContext
-        let user = NSEntityDescription.insertNewObject(forEntityName: "User", into: ctx)
-        user.setValue(sInstance.value(forKey: "id"), forKey: "id")
-        user.setValue(sInstance.value(forKey: "email"), forKey: "email")
-
-        let profile = NSEntityDescription.insertNewObject(forEntityName: "Profile", into: ctx)
-        profile.setValue(sInstance.value(forKey: "firstName"), forKey: "firstName")
-        profile.setValue(sInstance.value(forKey: "lastName"), forKey: "lastName")
-        profile.setValue(user, forKey: "owner")
-
-        manager.associate(sourceInstance: sInstance, withDestinationInstance: user, for: mapping)
-    }
-}
-```
-
-Other override hooks: `endInstanceCreation` (after all create-passes complete), `endRelationshipCreation` (relationships in place), `performCustomValidation` (final sanity check). `manager.userInfo` carries state between hooks.
-
-4. **CRITICAL: turn off automatic inference for heavyweight stores**:
-
-```swift
-description.shouldMigrateStoreAutomatically = true
-description.shouldInferMappingModelAutomatically = false   // ← false, not true
-```
-
-If you leave this `true` with a heavyweight change in the model, Core Data will *attempt* to infer, fail silently or produce broken data, and won't pick up your mapping model. This is one of the most common ways heavyweight migrations «just don't run».
-
-5. **Backup the store before migrating** (see *Long migrations* below).
-6. **Test against a fixture** (see *Testing / Migration tests*).
-
-### SwiftData — VersionedSchema + MigrationPlan
-
-Two stage types:
-
-- `.lightweight(fromVersion:toVersion:)` — additive changes, automatic.
-- `.custom(fromVersion:toVersion:willMigrate:didMigrate:)` — heavyweight: split, merge, value transform, computed defaults.
-
-```swift
-enum SchemaV1: VersionedSchema {
-    static var versionIdentifier = Schema.Version(1, 0, 0)
-    static var models: [any PersistentModel.Type] { [PersonV1.self] }
-
-    @Model final class PersonV1 {
-        var firstName: String = ""
-        var lastName: String = ""
-        var email: String = ""
-    }
-}
-
-enum SchemaV2: VersionedSchema {
-    static var versionIdentifier = Schema.Version(2, 0, 0)
-    static var models: [any PersistentModel.Type] { [UserV2.self, ProfileV2.self] }
-
-    @Model final class UserV2 { ... }
-    @Model final class ProfileV2 { ... }
-}
-
-enum AppMigrationPlan: SchemaMigrationPlan {
-    static var schemas: [any VersionedSchema.Type] { [SchemaV1.self, SchemaV2.self] }
-    static var stages: [MigrationStage] { [v1ToV2] }
-
-    static let v1ToV2 = MigrationStage.custom(
-        fromVersion: SchemaV1.self,
-        toVersion: SchemaV2.self,
-        willMigrate: { ctx in
-            // Read old V1 instances; snapshot what you need.
-            // ctx here speaks SchemaV1 — old @Models are visible.
-        },
-        didMigrate: { ctx in
-            // V2 schema is now active. Build V2 instances from the snapshot.
-            // For pure backfill of new fields, only didMigrate is needed.
-        }
-    )
-}
-```
-
-**The trick:** during `willMigrate` the context speaks the **old** schema (V1 models accessible); during `didMigrate` it speaks the **new** one (V2 models accessible). For split/merge, capture the source data in `willMigrate`, materialise V2 instances in `didMigrate`. For pure additive backfill — only `didMigrate`.
-
-### GRDB — DatabaseMigrator
-
-```swift
-var migrator = DatabaseMigrator()
-
-migrator.registerMigration("v1_create_items") { db in
-    try db.create(table: "item") { t in
-        t.column("id", .text).primaryKey()
-        t.column("title", .text).notNull()
-        t.column("createdAt", .datetime).notNull()
-    }
-}
-
-migrator.registerMigration("v2_add_isArchived") { db in
-    try db.alter(table: "item") { t in
-        t.add(column: "isArchived", .boolean).notNull().defaults(to: false)
-    }
-}
-
-try migrator.migrate(dbPool)
-```
-
-Each migration is named, ordered, and runs exactly once per database. Never edit a shipped migration — add a new one.
-
-### Realm — migration block
-
-```swift
-let config = Realm.Configuration(
-    schemaVersion: 2,
-    migrationBlock: { migration, oldVersion in
-        if oldVersion < 2 {
-            migration.enumerateObjects(ofType: "Item") { _, new in
-                new?["isArchived"] = false
-            }
-        }
-    }
-)
-```
-
-### Migrating transformable Codable payloads
-
-A category that standard migration mechanics do **not** cover: an entity has an attribute `payload: Data` that holds JSON-encoded Codable. The Codable struct evolves between releases. Core Data / SwiftData / GRDB don't see inside the blob — to them the column type didn't change. A naïve `JSONDecoder().decode(NewPayload.self, from: oldData)` throws on the first old row.
-
-This is a separate axis of migration, layered on top of schema migration. Four approaches, choose by situation:
-
-#### Approach 1 — Evolutionary Codable (prevention)
-
-Best when applicable. Design Codable so **new versions read old payloads without migration**:
-
-- New fields only `Optional` or with a default via custom `init(from:)`.
-- Never **rename** a field (use `CodingKeys` aliases if forced).
-- Never **change a field's type** (extend variants, don't replace).
-- Never **delete** a field (deprecate, leave for decoding).
-- Embed `version: Int` inside the payload as a safety net.
-- **Snapshot-test the JSON form** of every released version — see *Testing / Snapshot tests for transformable Codable payloads*.
-
-```swift
-struct Payload: Codable {
-    var a: String
-    var b: Int
-    var c: String        // ← added in v2
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        a = try c.decode(String.self, forKey: .a)
-        b = try c.decode(Int.self, forKey: .b)
-        self.c = try c.decodeIfPresent(String.self, forKey: .c) ?? "default"
-    }
-}
-```
-
-If discipline holds — **no blob migration is ever needed**.
-
-#### Approach 2 — Lazy migration on read
-
-When a real breaking change is already in flight (rename, restructure, derive a field) and you don't want a heavyweight Core Data migration just for the blob:
-
-- Custom `init(from:)` recognises **both** old and new shapes, converts on decode.
-- On the next save, the entity's payload is written in the new shape («lazy backfill»).
-
-```swift
-struct PayloadV2: Codable {
-    var fullName: String       // was: firstName + lastName
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        if let combined = try c.decodeIfPresent(String.self, forKey: .fullName) {
-            fullName = combined
-        } else {
-            let first = try c.decode(String.self, forKey: .firstName)
-            let last  = try c.decode(String.self, forKey: .lastName)
-            fullName = "\(first) \(last)"
-        }
-    }
-}
-```
-
-**Trade-offs.** Old shapes linger on disk until each row is saved — no index, no query can find values that haven't been backfilled. Custom `init(from:)` grows over time (v1 + v2 + v3 + …); deleting old branches is hard because some users are still on v1.
-
-#### Approach 3 — Proactive rewrite inside the schema migration
-
-When you need a hard guarantee that **all rows** are on the new payload shape — typically because a payload field is being promoted to an indexed/queryable column.
-
-The blob conversion lives inside the heavyweight Core Data policy / SwiftData `MigrationStage.custom.didMigrate` / GRDB migration block. Even if the Core Data entity structure didn't formally change, the blob change forces you onto the heavyweight path:
-
-```swift
-final class ItemPayloadV1ToV2Policy: NSEntityMigrationPolicy {
-    override func createDestinationInstances(forSource sInstance: NSManagedObject,
-                                             in mapping: NSEntityMapping,
-                                             manager: NSMigrationManager) throws {
-        let oldData = sInstance.value(forKey: "payload") as! Data
-        let oldPayload = try JSONDecoder().decode(PayloadV1.self, from: oldData)
-        let newPayload = PayloadV2(
-            a: oldPayload.a,
-            b: oldPayload.b,
-            fullName: "\(oldPayload.firstName) \(oldPayload.lastName)"
-        )
-        let newData = try JSONEncoder().encode(newPayload)
-
-        let dInstance = NSEntityDescription.insertNewObject(
-            forEntityName: "Item", into: manager.destinationContext)
-        dInstance.setValue(sInstance.value(forKey: "id"), forKey: "id")
-        dInstance.setValue(newData, forKey: "payload")
-        manager.associate(sourceInstance: sInstance,
-                          withDestinationInstance: dInstance,
-                          for: mapping)
-    }
-}
-```
-
-GRDB equivalent is plain SQL: `SELECT id, payload FROM item` → decode old → encode new → `UPDATE item SET payload = ? WHERE id = ?` inside a single `db.write` block.
-
-#### Approach 4 — Versioned envelope from the start
-
-For projects where the blob holds an evolving business model (editor snapshots, document state, complex configs) — wrap every payload in an envelope with an explicit version:
-
-```swift
-struct PayloadEnvelope: Codable {
-    let version: Int
-    let payload: Data       // raw, decoded based on version
-}
-
-enum AnyPayload {
-    case v1(PayloadV1), v2(PayloadV2), v3(PayloadV3)
-
-    init(envelopeData: Data) throws {
-        let env = try JSONDecoder().decode(PayloadEnvelope.self, from: envelopeData)
-        switch env.version {
-        case 1: self = .v1(try JSONDecoder().decode(PayloadV1.self, from: env.payload))
-        case 2: self = .v2(try JSONDecoder().decode(PayloadV2.self, from: env.payload))
-        case 3: self = .v3(try JSONDecoder().decode(PayloadV3.self, from: env.payload))
-        default: throw PayloadError.unknownVersion(env.version)
-        }
-    }
-}
-```
-
-Plus mappers V1→V2, V2→V3 composed into `migrate(to: .vCurrent)`. Trivial to unit-test, easy to reason about chains. Cost: extra decode layer on every read; introducing it later requires a one-time wrap-existing-data migration.
-
-#### Choosing
-
-| Situation | Approach |
-|---|---|
-| Changes are small (additions, optional fields), team can hold convention rules | **1** — evolutionary Codable + snapshot tests |
-| Breaking change already done, want to avoid a heavyweight schema migration | **2** — lazy on read |
-| All rows must be on the new shape (field is being indexed / queried) | **3** — proactive rewrite inside heavyweight migration |
-| New project, blob holds an evolving business model | **4** — versioned envelope from day one |
-
-Common combination: Approach 1 by default, Approach 3 for breaking changes that need full conversion.
-
-#### What NOT to do
-
-- **`try?` on decode + a fallback default** — silent data loss; you'll discover it months later when a user asks why their old projects are blank.
-- **`catch { ctx.delete(entity); save() }`** — actively destroys data.
-- **Changing a Codable struct without checking** for legacy payloads on disk.
-- **Removing old `PayloadV1` types** before all users have rolled forward (breaks Approaches 2 and 4).
-- **Trusting that lightweight schema migration «does something»** to the blob — it does literally nothing.
-
-### Progressive migration — v1 → v2 → v3 → … → current
-
-The most common production migration disaster: you assume everyone is on v(current-1) and write a single mapping model from there. In reality, your users are on **all past versions** — someone hasn't opened the app in a year and is still on v1. A direct v1→v5 mapping model rarely exists; even if you write one, you've doubled the surface area.
-
-**Right approach: chain.** Each migration goes from version N to N+1. Multi-version users walk the chain step by step.
-
-Per framework:
-
-| Framework | Chain mechanics |
-|---|---|
-| Core Data | One mapping model per **adjacent** pair (v1→v2, v2→v3, …). Detect current store version via `NSPersistentStoreCoordinator.metadataForPersistentStore`, find the path, run each step manually with `NSMigrationManager`. Ship one helper that owns this loop. |
-| SwiftData | Add adjacent stages to `MigrationPlan.stages` in order. SwiftData walks them automatically when opening an old store. |
-| GRDB | Bread-and-butter case: `DatabaseMigrator` already tracks which named migrations have been applied; missing ones run in registration order. Free progressive migration. |
-| Realm | The migration block receives `oldVersion`; you write `if oldVersion < 2 { ... } if oldVersion < 3 { ... }` cumulatively. |
-
-Core Data «manual chain» pattern:
-
-```swift
-func migrateStoreIfNeeded(at storeURL: URL) throws {
-    let metadata = try NSPersistentStoreCoordinator.metadataForPersistentStore(
-        type: .sqlite, at: storeURL)
-
-    let modelVersions: [NSManagedObjectModel] = [.v1, .v2, .v3, .v4]   // ordered
-    guard let startIndex = modelVersions.firstIndex(where: { $0.isConfiguration(withName: nil, compatibleWith: metadata) }) else {
-        throw MigrationError.unknownSourceVersion
-    }
-    guard startIndex < modelVersions.count - 1 else { return }   // already current
-
-    var currentURL = storeURL
-    for i in startIndex..<(modelVersions.count - 1) {
-        let from = modelVersions[i]
-        let to = modelVersions[i + 1]
-        let mapping = try mappingModel(from: from, to: to)        // adjacent pair
-        let intermediateURL = tmpDir.appendingPathComponent("step-\(i).sqlite")
-
-        let manager = NSMigrationManager(sourceModel: from, destinationModel: to)
-        try manager.migrateStore(from: currentURL, type: .sqlite, mapping: mapping,
-                                 to: intermediateURL, type: .sqlite)
-        currentURL = intermediateURL
-    }
-
-    try FileManager.default.replaceItem(at: storeURL, withItemAt: currentURL, ...)
-}
-```
-
-**Anti-pattern: one mega mapping model v1→vCurrent.** Looks economical (only one file), breaks every user who isn't exactly on v(current-1). Always adjacent pairs.
-
-**Anti-pattern: deleting old model versions to «clean up».** Once a model version shipped, it stays in `.xcdatamodeld` forever. Removing it breaks all users still on that version.
-
-### Long migrations — UX and performance
-
-Heavyweight migration loads source instances into memory and creates destination ones. For 50K+ records on mobile this can take **tens of seconds to minutes**, during which:
-
-- The app appears frozen if you migrate on the launch path with no UI.
-- iOS may kill the process if migration runs from a background launch (push, background fetch).
-- A foreground crash in the middle leaves you with a half-baked store on next launch.
-
-What to do:
-
-- **Show a migration UI.** A dedicated launch screen («Updating your library… N of M»). KVO-observe `NSMigrationManager.migrationProgress` (0.0–1.0) for Core Data; for SwiftData/GRDB you wrap the call yourself with progress reporting.
-- **Run on the foreground launch path, not background.** Detect `UIApplication.shared.applicationState == .background` and **defer migration to the next foreground launch** — back out cleanly, don't risk the process kill.
-- **Backup first, atomically replace on success:**
-
-  ```swift
-  let backup = storeURL.appendingPathExtension("bak.\(Int(Date().timeIntervalSince1970))")
-  try FileManager.default.copyItem(at: storeURL, to: backup)
-  do {
-      try migrateStoreIfNeeded(at: storeURL)
-      try FileManager.default.removeItem(at: backup)
-  } catch {
-      // store is still partially migrated — restore from backup
-      try? FileManager.default.removeItem(at: storeURL)
-      try FileManager.default.moveItem(at: backup, to: storeURL)
-      throw MigrationError.failed(underlying: error, backupRestoredAt: storeURL)
-  }
-  ```
-
-  This is the **single canonical backup pattern** for the skill — every other section refers back here.
-
-- **Set `description.shouldAddStoreAsynchronously = true`** for Core Data when you need to keep the launch responsive (the `loadPersistentStores` callback fires on a background queue). The migration itself still runs serially — but the main thread isn't blocked while it does.
-- **Skip-the-shore option for very large stores:** if the migration is too long to be reasonable, ship the new app with the **old schema still readable** for a release or two, and migrate lazily (one row per access) or in background batches. Cost: complexity in repository code that handles both schemas.
-
-### Failure recovery — what to show the user
-
-Heavyweight migration **will** fail in production. Disk pressure, OOM kill, corrupted store from a previous crash, mapping model bug that escaped tests. Plan it like network failure:
-
-- **Don't silently delete the store.** `try fs.remove(dbURL); try migrate(emptyStore)` looks like recovery, actually it's data loss.
-- **Persist the backup.** The backup file from *Long migrations* becomes the user's only recovery path.
-- **Surface a typed error to the UI.** `MigrationFailure(fromVersion:, toVersion:, underlying:, backupURL:)` — the presentation layer decides what to show.
-- **Three-button dialog** is the usual UX:
-  1. **Retry** — useful if the failure was transient (low disk, low memory).
-  2. **Send report** — package the backup file + last log + version metadata, send to support. Don't auto-upload PII without consent.
-  3. **Start fresh** — delete the broken store, start with empty DB, but **keep the backup** so the user can recover later if support helps.
-- **Telemetry**: from-version / to-version / duration / error-domain / error-code / available-disk / memory-pressure-at-failure → SwiftyBeaver / Firebase non-fatal / your stack. Without this you don't know that 0.4% of users on v3→v4 fail with `disk full`.
-
-### Migration discipline (any framework)
-
-1. **Schema version is checked into git.** Never edit a shipped schema in place.
-2. **Never edit a shipped migration.** Once a migration ran on a user's device, it's frozen. New corrections go in a **new** migration.
-3. **Adjacent pairs only.** No mega mapping models from version N to current — see *Progressive migration*.
-4. **Every migration has a fixture test** — see *Testing / Migration tests*.
-5. **Backup before any heavyweight or chained migration** — see *Long migrations*.
-6. **Telemetry on every migration outcome** — see *Failure recovery*. Migration failures in the wild are silent without it.
-7. **Plan a recovery path explicitly** — what does the user see if migration fails? Does «Start fresh» still leave them with a useful app, or is the data the entire app? If data is unrecoverable without the server, document the dependency.
-8. **Run migration on the foreground launch path.** Defer if launched in background.
+The persistence-architecture skill assumes:
+- Container/stack lifecycle in DI (this skill, *Dependency Injection*) calls `try await stack.warmUp()` before any Repository resolves; that's where `persistence-migrations` runs.
+- Repository methods (this skill, *Repository Boundary*) operate on an already-migrated store — they don't deal with version drift.
+- Migration failures surface as typed `MigrationFailure` errors mapped per `error-architecture` rules.
 
 ## CloudKit and Sync
 
@@ -1449,69 +1060,11 @@ final class ItemRepositoryTests: XCTestCase {
 
 For testing background actors (`@ModelActor`), test methods are non-isolated by default and `await` into the actor naturally.
 
-### Migration tests
+### Migration tests / Codable snapshot tests
 
-Ship the schema versions of past releases. For each migration:
+Fixture-based migration tests and snapshot tests for transformable Codable payloads belong with the migration mechanics they verify.
 
-1. Load a fixture DB at version N (committed in `Tests/Fixtures/v1.sqlite`).
-2. Open it with the current schema (triggers migration).
-3. Assert: row count preserved, new columns populated correctly, no data loss.
-
-This is the only way to catch heavyweight migration bugs before users hit them.
-
-```swift
-func test_migrationFromV1_addsIsArchivedDefaultingFalse() throws {
-    let url = copyFixture("items-v1.sqlite")
-    let pool = try DatabasePool(path: url.path)
-    try ItemMigrator.migrate(pool)
-    let items = try pool.read { try ItemRecord.fetchAll($0) }
-    XCTAssertEqual(items.count, 100)
-    XCTAssertTrue(items.allSatisfy { $0.isArchived == false })
-}
-```
-
-Generate fixtures **once from the old code** and freeze. Once a fixture is committed for version N, it must never change.
-
-### Snapshot tests for transformable Codable payloads
-
-For any Codable struct stored in a `Data` attribute, freeze the JSON form and assert decode + round-trip on every CI run. This is the only thing that catches accidental schema drift inside blobs (see *Migrations / Migrating transformable Codable payloads*).
-
-```swift
-final class PayloadSnapshotTests: XCTestCase {
-    func test_payloadV2_decodesFrozenJSON() throws {
-        let json = """
-        {"a":"hello","b":42,"c":"backfilled"}
-        """.data(using: .utf8)!
-
-        let decoded = try JSONDecoder().decode(Payload.self, from: json)
-        XCTAssertEqual(decoded.a, "hello")
-        XCTAssertEqual(decoded.b, 42)
-        XCTAssertEqual(decoded.c, "backfilled")
-    }
-
-    func test_payloadV2_roundTripIsStable() throws {
-        let original = Payload(a: "hello", b: 42, c: "world")
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = .sortedKeys
-
-        let encoded = try encoder.encode(original)
-        let decoded = try JSONDecoder().decode(Payload.self, from: encoded)
-
-        XCTAssertEqual(decoded, original)
-    }
-
-    func test_payloadV2_decodesV1JSON_withDefaultForNewField() throws {
-        let v1JSON = """
-        {"a":"hello","b":42}
-        """.data(using: .utf8)!
-
-        let decoded = try JSONDecoder().decode(Payload.self, from: v1JSON)
-        XCTAssertEqual(decoded.c, "default")    // backfill from custom init
-    }
-}
-```
-
-The third test is the critical one — it pins the contract «v1 payload still decodes», which is what protects users on older versions.
+→ See `persistence-migrations` / *Testing*.
 
 ### Concurrency tests
 
@@ -1579,32 +1132,25 @@ Each entry one line + cross-reference to the body section that explains the fix.
 1. **Returning `NSManagedObject` / `@Model` / Realm `Object` from Repository** — leaks the framework, thread-confined. See *Repository Boundary*.
 2. **One context for reads and writes on the main thread** — UI freezes. See *Threading and Contexts*.
 3. **Sharing `NSManagedObject` / Realm object across threads** — silent crashes/corruption. See *Sendable and Swift Concurrency*.
-4. **No migration plan from day one** — first user upgrade crashes the app. See *Migrations*.
-5. **Editing a shipped migration** — never change a migration that ran on a user's device.
-6. **No fixture test for heavyweight migration** — see *Testing / Migration tests*.
-7. **No backup before destructive migration** — see *Migrations / Long migrations*.
-8. **`UserDefaults` for «real» data** — sync I/O, 4KB practical limit, NOT encrypted. Use Keychain for secrets, a real DB for collections.
-9. **Storing PII / tokens unencrypted** — see *Encryption and File Protection*.
-10. **`@Query` / `@FetchRequest` in detail screens** — re-renders on any model change. Use manual fetch + `@State`.
-11. **Mixing remote and local errors at the Repository boundary** — see `error-architecture`.
-12. **Treating CloudKit sync as instant** — first sync can take minutes; show sync-status UI.
-13. **No identity strategy** — auto-increment IDs collide on cross-device sync. Use `UUID`.
-14. **Hard delete with no audit / sync** — see *Schema Design / Soft delete*.
-15. **Loading large blobs into the database** — store as files, keep path in DB.
-16. **Fake `throws` over async work** — see *Repository Write Patterns / Anti-pattern: silent write failure*.
-17. **Delete-and-recreate children on every parent save** — see *Updating child collections — diff*.
-18. **Returning `Optional<Domain>` from a mapper as an error signal** — make mappers `throws` with typed `MappingError(field:, reason:)`.
-19. **Mutable shared state inside a mapper** (`var transaction`) — pass context as a parameter to each call.
-20. **Auto-deleting the user's database on migration failure** — see *Migrations / Failure recovery*.
-21. **`NSPredicate` / `NSSortDescriptor` in the abstract storage protocol** — leaks Core Data; use a domain-level `Filter`.
-22. **«Universal storage facade»** — see *Dependency Injection / Anti-pattern*.
-23. **Lazy bootstrap inside the first Repository call** — run `try await stack.warmUp()` explicitly in Composition Root.
-24. **`shouldInferMappingModelAutomatically = true` with a heavyweight schema change** — see *Migrations / Core Data*.
-25. **One mega mapping model from version N to current** — see *Migrations / Progressive migration*.
-26. **Running heavyweight migration on background launch** — defer to next foreground launch.
-27. **Changing a Codable struct stored in a transformable attribute without a payload-migration plan** — see *Migrations / Migrating transformable Codable payloads*.
-28. **DB file in `Documents/`** — backed up to iCloud, eats user quota, visible in Files. Use `Library/Application Support/`. See *Storage Location and Sharing*.
-29. **Sharing Core Data between app and Extension without Persistent History Tracking** — extension writes invisible to main app. See *Persistent History Tracking*.
-30. **Storing `Date` as locale-formatted `String`** — `DateFormatter` without `.iso8601` is locale-dependent; user travelling between locales gets garbled timestamps. Use `Date` natively or `ISO8601DateFormatter`.
-31. **Domain model with non-Sendable types (`UIImage`, `NSAttributedString`)** — Swift 6 rejects, or silently passes corrupt data across actors. Store as `Data` / `URL` and convert at the UI layer. See *Sendable and Swift Concurrency*.
-32. **CloudKit-incompatible schema** (required attributes without defaults, missing inverse relationships, `Unique` constraints) — local store works, sync silently broken. See *CloudKit / Schema constraints*.
+4. **`UserDefaults` for «real» data** — sync I/O, 4KB practical limit, NOT encrypted. Use Keychain for secrets, a real DB for collections.
+5. **Storing PII / tokens unencrypted** — see *Encryption and File Protection*.
+6. **`@Query` / `@FetchRequest` in detail screens** — re-renders on any model change. Use manual fetch + `@State`.
+7. **Mixing remote and local errors at the Repository boundary** — see `error-architecture`.
+8. **Treating CloudKit sync as instant** — first sync can take minutes; show sync-status UI.
+9. **No identity strategy** — auto-increment IDs collide on cross-device sync. Use `UUID`.
+10. **Hard delete with no audit / sync** — see *Schema Design / Soft delete*.
+11. **Loading large blobs into the database** — store as files, keep path in DB.
+12. **Fake `throws` over async work** — see *Repository Write Patterns / Anti-pattern: silent write failure*.
+13. **Delete-and-recreate children on every parent save** — see *Updating child collections — diff*.
+14. **Returning `Optional<Domain>` from a mapper as an error signal** — make mappers `throws` with typed `MappingError(field:, reason:)`.
+15. **Mutable shared state inside a mapper** (`var transaction`) — pass context as a parameter to each call.
+16. **`NSPredicate` / `NSSortDescriptor` in the abstract storage protocol** — leaks Core Data; use a domain-level `Filter`.
+17. **«Universal storage facade»** — see *Dependency Injection / Anti-pattern*.
+18. **Lazy bootstrap inside the first Repository call** — run `try await stack.warmUp()` explicitly in Composition Root.
+19. **DB file in `Documents/`** — backed up to iCloud, eats user quota, visible in Files. Use `Library/Application Support/`. See *Storage Location and Sharing*.
+20. **Sharing Core Data between app and Extension without Persistent History Tracking** — extension writes invisible to main app. See *Persistent History Tracking*.
+21. **Storing `Date` as locale-formatted `String`** — `DateFormatter` without `.iso8601` is locale-dependent; user travelling between locales gets garbled timestamps. Use `Date` natively or `ISO8601DateFormatter`.
+22. **Domain model with non-Sendable types (`UIImage`, `NSAttributedString`)** — Swift 6 rejects, or silently passes corrupt data across actors. Store as `Data` / `URL` and convert at the UI layer. See *Sendable and Swift Concurrency*.
+23. **CloudKit-incompatible schema** (required attributes without defaults, missing inverse relationships, `Unique` constraints) — local store works, sync silently broken. See *CloudKit / Schema constraints*.
+
+> Migration-specific mistakes (no migration plan, edited shipped migration, mega mapping model, missing fixture test, auto-deleting DB on failure, etc.) live in `persistence-migrations` / *Common Mistakes*.

@@ -15,6 +15,7 @@ Decisions about **how the network layer is shaped** in an iOS app: layering, the
 > - `reactive-combine`, `reactive-rxswift` — bridging async/await network calls into reactive pipelines
 > - `net-openapi` — generating typed clients from OpenAPI specs (Apple's `swift-openapi-generator`)
 > - `persistence-architecture` — pairing remote source with a local cache (offline-first, read-through, observe-with-refresh)
+> - `persistence-migrations` — when a server contract change requires a local-store schema migration (DTO restructure → cached DTO/entity restructure)
 
 ## Why This Skill Exists
 
@@ -418,7 +419,7 @@ Two layers — pick deliberately.
 - **Cache invalidation** belongs to the Repository, not the View — when a `POST /items` succeeds, the Repository invalidates `items list` cache before returning.
 - **Do not** cache 4xx/5xx responses unless you're implementing offline-first explicitly (then cache them as "last known error" with TTL).
 
-Persistent storage strategies (Core Data, SwiftData, SQLite) — see `persistence-architecture` skill (планируется).
+Persistent storage strategies (Core Data, SwiftData, SQLite) — see `persistence-architecture` skill; for cached-DTO/entity schema evolution see `persistence-migrations`.
 
 ## Framework Comparison
 

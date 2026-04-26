@@ -104,7 +104,8 @@ Consult the appropriate skill for testing patterns:
 - `error-architecture` — testing error paths: golden mapper tables, ViewModel UserMessage assertions, cancellation silence
 - `net-architecture` — `URLProtocol` stub for transport-level integration tests, fake `HTTPClient` for unit tests, contract tests for endpoint URL/method/body encoding
 - `net-openapi` — mocking generated `APIProtocol` vs adapter `APIClient` protocol, server stub for integration tests
-- `persistence-architecture` — `FakeRepository` for unit tests, in-memory store for integration tests (per framework: `NSInMemoryStoreType` / `ModelConfiguration(isStoredInMemoryOnly: true)` / `DatabaseQueue()` / `Realm.Configuration(inMemoryIdentifier:)`), fixture-based migration tests (load v1 DB → migrate → assert v2)
+- `persistence-architecture` — `FakeRepository` for unit tests, in-memory store for integration tests (per framework: `NSInMemoryStoreType` / `ModelConfiguration(isStoredInMemoryOnly: true)` / `DatabaseQueue()` / `Realm.Configuration(inMemoryIdentifier:)`), concurrency-conflict tests, test data builders
+- `persistence-migrations` — fixture-based migration tests (freeze v1 DB → run migration → assert v2 row count + new columns + no data loss), snapshot tests for transformable Codable payloads (frozen JSON decode + round-trip + decode-old-from-new), test that v1 → vCurrent fixture walks the full chain, never re-generating frozen fixtures
 - `di-swinject` — test container configuration
 - `di-composition-root` — smoke tests for CR (registrations, bootstrap timing)
 - `di-module-assembly` — testing with mock Factories and Assemblies

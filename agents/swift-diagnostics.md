@@ -68,7 +68,8 @@ Produce the Output Structure below. Wait for explicit user confirmation (`ok`, `
 - `error-architecture` — diagnosing leaked low-level errors, broken mapping, swallowed catches, CancellationError shown as user error
 - `net-architecture` — token refresh races, retry storms, double-charge from POST retry, hidden `URLSession.shared` usage, JSON decoding-by-mistake
 - `net-openapi` — `.undocumented` runtime crashes, spec/server drift, generated decode failures (date format mismatch, optional/required mismatch)
-- `persistence-architecture` — `NSObjectInaccessibleException` from cross-context object use, schema-migration crash on app launch after upgrade, main-thread freeze during writes, `UserDefaults` sync-I/O hang on cold start, `@Query` over-rerender, Realm thread-confined object accessed off-thread
+- `persistence-architecture` — `NSObjectInaccessibleException` from cross-context object use, main-thread freeze during writes, `UserDefaults` sync-I/O hang on cold start, `@Query` over-rerender, Realm thread-confined object accessed off-thread
+- `persistence-migrations` — post-mortem on migration failures: `Cannot create NSManagedObjectModel: model is not loadable` on launch, `shouldInferMappingModelAutomatically=true` silently dropping a heavyweight mapping model, decode-failure on transformable Codable for older payload shapes, OOM kill mid-migration leaving a half-baked store, missing-fixture root cause for «works in dev, breaks in prod»
 - `di-swinject`, `di-composition-root`, `di-module-assembly` — DI configuration bugs (registrations, scope mismatches, async bootstrap races)
 - `pkg-spm-design` — bugs caused by package boundary violations (DI-framework version conflicts, leaked internal state)
 - `arch-mvvm`, `arch-viper`, `arch-clean`, `arch-coordinator`, `arch-swiftui-navigation` — layer-violation detection (Coordinator for UIKit, `arch-swiftui-navigation` for SwiftUI Router/Path bugs)

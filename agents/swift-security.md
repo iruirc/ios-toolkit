@@ -50,6 +50,7 @@ Audit source code, infrastructure (Info.plist, entitlements, xcconfig), dependen
 - `net-architecture` — auth interceptor design (single-flight refresh actor), retry policy that never auto-retries non-idempotent POST, cache poisoning via `URLCache` with `Authorization`
 - `net-openapi` — generated client middleware for token injection, no committed generated code containing secrets, `accessModifier: internal` to keep auth surfaces from leaking
 - `persistence-architecture` — encryption at rest (`NSFileProtectionComplete` on store file, SQLCipher with GRDB, Realm encryption key in Keychain), tokens/PII NEVER in `UserDefaults` or unencrypted Core Data / SQLite, jailbreak/backup readability of plaintext DB files, CloudKit-synced data classification, Keychain access control (`kSecAttrAccessibleWhenUnlockedThisDeviceOnly`)
+- `persistence-migrations` — migration backup files retain user data (PII) at the same protection class as the live store, telemetry on migration failure must NOT auto-upload the backup or raw payload (consent + redaction), «Send report» button in failure dialog must scrub PII before bundling, encrypted-store key handling preserved across migration (Realm key reused, SQLCipher rekey not silently dropped)
 
 ## Related Agents (swift-toolkit)
 

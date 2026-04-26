@@ -267,7 +267,8 @@ Consult these skills when reviewing code against architectural / framework expec
 - `error-architecture` — per-layer error type discipline, mapper purity, presentation policy, PII in logs, CancellationError handling
 - `net-architecture` — HTTPClient/APIClient boundary integrity, interceptor ordering, retry-on-non-idempotent (POST without idempotency-key) red flag, JSON decoding leaking into ViewModel
 - `net-openapi` — generated types not leaked past adapter, `.undocumented` handled, `accessModifier: internal`, no committed generated code
-- `persistence-architecture` — Repository boundary integrity (no `NSManagedObject` / `@Model` / Realm objects past it), main-thread writes / one-context-for-everything red flags, missing or unsafe migration plan, `UserDefaults` for non-trivial / sensitive data, hard-delete without tombstone in synced data
+- `persistence-architecture` — Repository boundary integrity (no `NSManagedObject` / `@Model` / Realm objects past it), main-thread writes / one-context-for-everything red flags, `UserDefaults` for non-trivial / sensitive data, hard-delete without tombstone in synced data, missing Persistent History Tracking on a shared App Group store
+- `persistence-migrations` — PR red flags on schema changes: edited shipped migration / mapping model, missing fixture test for new heavyweight step, mega `v1 → vCurrent` mapping model instead of adjacent pairs, `shouldInferMappingModelAutomatically=true` paired with structural changes, Codable struct edited without payload-migration plan, `try?` decode of transformable Codable as «error handling», auto-`fs.remove(dbURL)` on migration failure dressed up as recovery
 - `di-swinject` — DI scopes, Assembly wiring, Service Locator anti-patterns
 - `di-composition-root` — what belongs in CR vs not, bootstrap correctness, scope leaks
 - `di-module-assembly` — Factory pattern, protocol seams, late initialization patterns
