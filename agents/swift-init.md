@@ -99,7 +99,8 @@ Always use the latest stable swift-tools-version and Swift language version avai
 Consult the relevant skill when scaffolding. The skill body defines the folder structure, protocol shape, and conventions that must be reflected in the generated scaffold:
 
 - `mvvm` — MVVM module folder layout (View / ViewModel / bindings), binding setup
-- `coordinator` — Coordinator module and Router abstraction, navigation wiring
+- `coordinator` — Coordinator module and Router abstraction, navigation wiring (UIKit)
+- `swiftui-navigation` — SwiftUI navigation: NavigationStack/Path, `@Observable` Router, deep links, hybrid SwiftUI ↔ UIKit interop
 - `viper` — VIPER module structure (View / Interactor / Presenter / Entity / Router files)
 - `clean-architecture` — Domain/Data/Presentation folder split, Use Cases, Repository protocols
 - `mvc` — classic MVC folder layout

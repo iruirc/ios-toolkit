@@ -78,7 +78,8 @@ When reactive chains are overly complex or hard to read:
 
 Consult the appropriate skill when refactoring:
 - `mvvm` — MVVM target patterns
-- `coordinator` — navigation pattern
+- `coordinator` — UIKit navigation pattern
+- `swiftui-navigation` — SwiftUI navigation, Router class, hybrid interop
 - `viper` — VIPER target patterns
 - `clean-architecture` — Clean Architecture target patterns
 - `mvc` — MVC pattern

@@ -72,7 +72,8 @@ When proposing architecture, always provide:
 
 Consult the appropriate skill based on the architecture in use:
 - `mvvm` — MVVM pattern implementation
-- `coordinator` — Coordinator navigation pattern
+- `coordinator` — Coordinator navigation pattern (UIKit)
+- `swiftui-navigation` — SwiftUI navigation (NavigationStack/Path, Router, deep links, hybrid interop)
 - `viper` — VIPER architecture
 - `clean-architecture` — Clean Architecture with Use Cases
 - `mvc` — MVC pattern

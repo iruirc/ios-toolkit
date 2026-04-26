@@ -257,7 +257,8 @@ If verdict is "Request changes", a short list of the issues worth tracking as se
 Consult these skills when reviewing code against architectural / framework expectations. The skill body is the source of truth for "what correct looks like" in this project:
 
 - `mvvm` — MVVM layering expectations (bindings, ViewModel boundaries)
-- `coordinator` — Coordinator navigation pattern (what belongs in Coordinator vs ViewController)
+- `coordinator` — Coordinator navigation pattern (UIKit) — what belongs in Coordinator vs ViewController
+- `swiftui-navigation` — SwiftUI navigation review: NavigationStack/Path correctness, Router state ownership, common SwiftUI navigation pitfalls
 - `viper` — VIPER role boundaries (View / Interactor / Presenter / Entity / Router)
 - `clean-architecture` — Domain/Data/Presentation dependency rules, Use Case signatures
 - `mvc` — MVC boundaries
