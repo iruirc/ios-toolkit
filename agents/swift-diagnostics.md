@@ -65,7 +65,8 @@ Produce the Output Structure below. Wait for explicit user confirmation (`ok`, `
 ## Skills Reference (swift-toolkit)
 
 - `rxswift`, `combine` — framework-specific leak/threading patterns
-- `swinject`, `module-assembly` — DI configuration bugs
+- `swinject`, `composition-root`, `module-assembly` — DI configuration bugs (registrations, scope mismatches, async bootstrap races)
+- `spm-package-design` — bugs caused by package boundary violations (DI-framework version conflicts, leaked internal state)
 - `mvvm`, `viper`, `clean-architecture`, `coordinator` — layer-violation detection
 
 ## Related Agents (swift-toolkit)

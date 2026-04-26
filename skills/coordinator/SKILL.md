@@ -7,7 +7,10 @@ description: "Use when implementing Coordinator navigation pattern in iOS apps. 
 
 Navigation pattern that extracts routing logic from ViewControllers into dedicated Coordinator objects. Orthogonal to architectural pattern — works with MVC, MVVM, VIPER, etc.
 
-> **Related skill:** `module-assembly` — covers CoordinatorFactory, ModuleFactory, Assembly, and Composition Root in detail.
+> **Related skills:**
+> - `module-assembly` — covers CoordinatorFactory, ModuleFactory, Assembly in detail
+> - `composition-root` — where Coordinators get bootstrapped (SceneDelegate / @main App / AppDelegate)
+> - `swinject` — DI-framework-specific patterns if Swinject is the chosen container
 
 ## Structure
 
@@ -186,7 +189,7 @@ class AppCoordinator: BaseCoordinator {
 }
 ```
 
-Window setup belongs in SceneDelegate (Composition Root) — see `module-assembly` skill.
+Window setup belongs in SceneDelegate (Composition Root) — see `composition-root` skill.
 
 ## Communication Patterns
 

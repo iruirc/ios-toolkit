@@ -85,7 +85,9 @@ Consult the appropriate skill when refactoring:
 - `rxswift` — simplifying RxSwift chains
 - `combine` — simplifying Combine chains
 - `swinject` — DI registration for extracted services
-- `module-assembly` — Factory pattern, Assembly, Composition Root
+- `composition-root` — extracting CR concerns out of fat AppDelegate/SceneDelegate
+- `module-assembly` — Factory pattern, Assembly, non-UI factories
+- `spm-package-design` — extracting code into SPM packages by archetype
 - `task-new`, `task-move` — task lifecycle management
 
 ## Related Agents (swift-toolkit)

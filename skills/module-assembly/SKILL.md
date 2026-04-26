@@ -1,11 +1,16 @@
 ---
 name: module-assembly
-description: "Use when assembling MVVM modules, creating CoordinatorFactory/ModuleFactory, wiring View+ViewModel, or setting up Composition Root in SceneDelegate. Covers Factory pattern that connects DI container with Coordinators without Service Locator."
+description: "Use when assembling UI modules (MVVM/MVVM+Coordinator), creating CoordinatorFactory/ModuleFactory, wiring View+ViewModel. Covers Factory pattern that connects DI container with Coordinators without Service Locator. Also covers non-UI factories and late/conditional initialization patterns."
 ---
 
 # Module Assembly Pattern
 
 Connects Dependency Injection with Coordinators through explicit Factory objects. Coordinators never touch the DI container directly — they receive pre-built modules from Factories.
+
+> **Related skills:**
+> - `composition-root` — где живёт CR, как он передаёт зависимости в Factory-и (вынесено отдельно — этот скилл больше **не описывает CR подробно**, только использует)
+> - `swinject` — Swinject-специфика, если выбран как DI-framework
+> - `spm-package-design` — как Module Assembly применяется внутри SPM-пакета (Feature-архетип)
 
 ## Problem
 
@@ -313,50 +318,19 @@ final class ProfileCoordinator: BaseCoordinator {
 }
 ```
 
-## Composition Root
+## Composition Root (краткая роль в Module Assembly)
 
-Everything wires together in SceneDelegate — the only place that knows about concrete types:
+CR создаёт `AppDependencyContainer`, передаёт его в `CoordinatorFactoryImp`, создаёт root-Coordinator и стартует UI. Полное описание CR — паттерны bootstrap, scope-стратегии, тестирование, что в нём НЕ должно быть — см. **`composition-root` skill**.
+
+Минимальный пример для контекста (UIKit, SceneDelegate):
 
 ```swift
-class SceneDelegate: UIResponder, UIWindowSceneDelegate {
-    var window: UIWindow?
-    private var appContainer: AppDependencyContainer?
-    private var applicationCoordinator: ApplicationCoordinator?
-
-    func scene(_ scene: UIScene,
-               willConnectTo session: UISceneSession,
-               options connectionOptions: UIScene.ConnectionOptions) {
-
-        guard let windowScene = scene as? UIWindowScene else { return }
-
-        // 1. Create DI container
-        let container = AppDependencyContainer()
-        container.bootstrap()
-        appContainer = container
-
-        // 2. Create window
-        let window = UIWindow(windowScene: windowScene)
-        self.window = window
-
-        // 3. Create factories
-        let coordinatorFactory = CoordinatorFactoryImp(dependencies: container)
-
-        // 4. Create root coordinator
-        let navigationController = UINavigationController()
-        let router = AppRouter(navigationController: navigationController)
-        window.rootViewController = navigationController
-
-        let appCoordinator = ApplicationCoordinator(
-            router: router,
-            coordinatorFactory: coordinatorFactory
-        )
-        applicationCoordinator = appCoordinator
-
-        // 5. Start
-        window.makeKeyAndVisible()
-        appCoordinator.start()
-    }
-}
+let container = AppDependencyContainer()
+container.bootstrap()
+let coordinatorFactory = CoordinatorFactoryImp(dependencies: container)
+let router = AppRouter(navigationController: UINavigationController())
+let appCoordinator = ApplicationCoordinator(router: router, coordinatorFactory: coordinatorFactory)
+appCoordinator.start()
 ```
 
 ## AppDependencyContainer
@@ -536,6 +510,54 @@ static func assemble(dependencies: ProfileFeatureDependencies, userId: String)
     -> ModuleComponents<ProfileViewController, ProfileViewModel>
 ```
 
+## Beyond UI Modules
+
+Factory-паттерн применим **не только к парам View+ViewModel**. В реальных проектах нужны ещё несколько разновидностей фабрик и стратегий late initialization.
+
+### Non-UI factories
+
+Когда нужно создавать сложные не-UI объекты с runtime-параметрами или контекстом:
+
+| Тип | Что собирает | Пример |
+|---|---|---|
+| **AlertFactory** | UIAlertController с типизированными actions | `ProjectStorageAlertFactory.makeOverwriteConfirmation(onConfirm:)` |
+| **DataProviderFactory** | DataSource/Adapter под конкретный экран или коллекцию | `TimelineContainerDataProviderFactory.make(for: track)` |
+| **Stub/Mock factories** | Тестовые двойники для UI-screenshots, demo-mode | `StubServicesFactory.makeOfflineMode()` |
+| **DTO factories** | Сложные доменные структуры из множества полей | `RenderRequestFactory.makeFor(project:, settings:)` |
+
+Правила те же, что для ModuleFactory:
+- Зависимости через init (от своего узкого `Dependencies`-протокола)
+- Чистая функция `make(...)` — без побочных эффектов
+- `enum` для stateless / `final class` для тех, что хранят кэш или зависимости
+- Только internal API наружу — никаких `static let shared`
+
+### Late & Conditional Initialization
+
+CR создаёт **корень** графа, но не все объекты создаются на старте. Несколько типичных сценариев:
+
+| Сценарий | Решение | Пример |
+|---|---|---|
+| **Runtime-параметр** (`itemId`, `userId`) | Assembly принимает `(deps, param)` | `DetailAssembly.assemble(dependencies:, itemId:)` — см. секцию выше «Modules that need runtime parameters» |
+| **Тяжёлый ресурс** | `lazy var` в AppDependencyContainer | `lazy var renderEngine: RenderEngine = makeRenderEngine()` |
+| **Per-flow сервис** | Создаётся Coordinator-ом на `start()`, dispose на `finish` | `OnboardingState`, `CheckoutSession` |
+| **Конфиг из user input** | Сервис имеет `configure(with:)` или `bootstrap(token:)` | `APIClient.configure(token:)` после логина |
+| **Async init** | См. `composition-root`, секция «Async bootstrap» | БД с миграциями, прогрев кэша |
+| **Условное создание** (Pro-only фича) | Lazy + проверка флага в getter; либо отдельный фабричный метод, который Coordinator вызывает только при нужном условии | Player с/без Metal-rendering — ветка в `createPlayerModule()` |
+| **Циклические зависимости** | См. `swinject` skill, «Circular Dependencies» — property injection или ввод третьего типа | A↔B → A→C, B→C |
+
+Общее правило: **CR — это корень, а не единственное место создания.** Если что-то нельзя создать в CR — это не повод тащить контейнер в место использования (Service Locator). Это повод вынести логику создания в фабрику или Assembly с явными параметрами.
+
+### Когда применять Factory-паттерн вне UI
+
+Не каждое создание объекта требует фабрики. Применяй её, когда выполнено хотя бы одно:
+- Объект сложный (≥3 зависимости)
+- Объект собирается из контекстных параметров, известных только в рантайме
+- Создание требует условной логики (платформа, фича-флаг, конфиг)
+- Один и тот же тип создаётся в нескольких местах (DRY)
+- Создание имеет побочные эффекты, которые надо изолировать (регистрация observer-а, запуск таймера)
+
+Если ничего из этого нет — обычный init на месте лучше. Преждевременное введение фабрики усложняет код без пользы.
+
 ## Common Mistakes
 
 1. **Coordinator resolving from container** — Coordinator should never import Swinject or call `resolve()`. It receives factories.
@@ -543,3 +565,4 @@ static func assemble(dependencies: ProfileFeatureDependencies, userId: String)
 3. **Assembly with side effects** — Assembly should only wire objects. No analytics, no logging, no network calls.
 4. **Skipping feature dependency protocols** — Passing `AppDependencies` everywhere defeats the purpose. Each Assembly should accept its minimal protocol.
 5. **Creating ModuleFactory inside Coordinator** — Factory is created once in CoordinatorFactory and passed down. Coordinator doesn't create factories.
+6. **Premature factory for trivial init** — `UserFactory.make() -> User { User() }` бессмысленна. Применяй Factory только при реальной сложности (см. чек-лист «Когда применять Factory-паттерн вне UI»).

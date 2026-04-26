@@ -102,7 +102,9 @@ Consult the appropriate skill for testing patterns:
 - `rxswift` — testing RxSwift code with RxTest/RxBlocking
 - `combine` — testing Combine code with expectations
 - `swinject` — test container configuration
+- `composition-root` — smoke tests for CR (registrations, bootstrap timing)
 - `module-assembly` — testing with mock Factories and Assemblies
+- `spm-package-design` — testing package boundaries, test-utility package patterns
 - `task-new`, `task-move` — task lifecycle management
 
 ## Related Agents (swift-toolkit)

@@ -264,7 +264,9 @@ Consult these skills when reviewing code against architectural / framework expec
 - `rxswift` — RxSwift idioms, disposal, threading, Driver/Signal usage
 - `combine` — Combine idioms, subscription storage, schedulers
 - `swinject` — DI scopes, Assembly wiring, Service Locator anti-patterns
-- `module-assembly` — Factory pattern, Composition Root, protocol seams
+- `composition-root` — what belongs in CR vs not, bootstrap correctness, scope leaks
+- `module-assembly` — Factory pattern, protocol seams, late initialization patterns
+- `spm-package-design` — package boundary violations (DI-framework leaks, public-surface bloat, archetype mismatch)
 - `task-new`, `task-move` — task lifecycle management (used in Follow-up suggestions)
 
 ## Related Agents (swift-toolkit)

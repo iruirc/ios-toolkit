@@ -103,8 +103,10 @@ Consult the relevant skill when scaffolding. The skill body defines the folder s
 - `viper` — VIPER module structure (View / Interactor / Presenter / Entity / Router files)
 - `clean-architecture` — Domain/Data/Presentation folder split, Use Cases, Repository protocols
 - `mvc` — classic MVC folder layout
-- `swinject` — Assembly/Container setup, scopes, AppDelegate/SceneDelegate wiring
-- `module-assembly` — Factory pattern, Composition Root, module seams
+- `swinject` — Swinject-специфика: scopes, регистрации, autoregister, тестовые контейнеры
+- `composition-root` — где живёт CR (SceneDelegate / @main App / AppDelegate), sync vs async bootstrap, scopes (app/scene/flow)
+- `module-assembly` — Factory-паттерн для UI-фич, не-UI factories, late & conditional initialization
+- `spm-package-design` — 4 архетипа SPM-пакетов (Feature / Library / API-Contract / Engine-SDK) с правилами публичности
 - `rxswift` — RxSwift initial imports, DisposeBag setup, Resources subclass if present
 - `combine` — Combine imports, AnyCancellable storage patterns
 

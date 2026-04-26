@@ -1,13 +1,16 @@
 ---
 name: swinject
-description: "Use when working with Swinject dependency injection in iOS apps. Covers container setup, object scopes, Assembly pattern, auto-registration, and testing configuration. For module assembly (how DI connects to Coordinators) see module-assembly skill."
+description: "Use when working with Swinject dependency injection in iOS apps. Covers Swinject-specific patterns: object scopes, registrations (basic, autoregister, named, with arguments), Assembly pattern, testing configuration. For Composition Root design see composition-root skill; for connecting DI to Coordinators see module-assembly skill."
 ---
 
 # Swinject Dependency Injection Patterns
 
-This skill provides guidelines for using Swinject effectively in iOS applications.
+This skill provides Swinject-specific guidelines: scopes, registration techniques, autoregistration, testing.
 
-> **Related skill:** `module-assembly` — covers how DI container connects to Coordinators via Factory pattern without Service Locator.
+> **Related skills:**
+> - `composition-root` — где создаётся Swinject `Container`, как живёт его lifetime, sync/async bootstrap, scope-стратегии
+> - `module-assembly` — как Coordinator-ы получают сервисы из Swinject через Factory-паттерн без Service Locator
+> - `spm-package-design` — почему Swinject **не должен** импортироваться в SPM-пакетах
 
 ## When to Use
 
@@ -21,13 +24,15 @@ This skill provides guidelines for using Swinject effectively in iOS application
 **Consider alternatives**:
 - Simple apps → Manual DI (pass dependencies in init)
 - SwiftUI apps → Environment objects
-- Compile-time safety priority → Factory pattern
+- Compile-time safety priority → manual DI + Factory pattern (см. `module-assembly`)
 
 ## Core Concepts
 
 ### Container Setup
 
-The container should be created in the Composition Root (SceneDelegate) and wrapped in an `AppDependencyContainer` facade — not exposed as a global singleton. See `module-assembly` skill for the full Composition Root pattern.
+Swinject `Container` создаётся в Composition Root и оборачивается в `AppDependencyContainer` фасад — никогда не используется как глобальный `static let shared`. **Подробности про CR — в скилле `composition-root`.**
+
+Минимум для контекста:
 
 ```swift
 import Swinject
@@ -41,18 +46,10 @@ final class AppDependencyContainer {
         registerServices()
         registerViewModels()
     }
-
-    private func registerServices() {
-        // Services go here
-    }
-
-    private func registerViewModels() {
-        // ViewModels go here
-    }
 }
 ```
 
-> **Avoid `static let shared`** — a global singleton container becomes a Service Locator (hidden dependencies, hard to test). Instead, create the container in SceneDelegate and pass typed dependency protocols to Factories. See `module-assembly` skill.
+> **`static let shared` запрещён** — превращает контейнер в Service Locator (скрытые зависимости, нет testability). См. `composition-root` skill про правильное место и lifetime контейнера.
 
 ### Basic Registration
 

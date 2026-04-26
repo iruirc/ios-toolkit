@@ -66,8 +66,10 @@ Consult the appropriate skill based on the architecture in use:
 - `mvc` — MVC pattern
 - `rxswift` — RxSwift patterns and best practices
 - `combine` — Combine framework patterns
-- `swinject` — dependency injection patterns
-- `module-assembly` — Factory pattern, Assembly, Composition Root
+- `swinject` — dependency injection patterns (Swinject-specific)
+- `composition-root` — where to wire new services (CR layout, bootstrap)
+- `module-assembly` — Factory pattern, Assembly, non-UI factories, late initialization
+- `spm-package-design` — when implementing inside SPM packages (per-archetype rules)
 - `task-new`, `task-move` — task lifecycle management
 
 ## Related Agents (swift-toolkit)

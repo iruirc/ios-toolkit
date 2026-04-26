@@ -43,7 +43,8 @@ Audit source code, infrastructure (Info.plist, entitlements, xcconfig), dependen
 
 ## Skills Reference (swift-toolkit)
 
-- `swinject`, `module-assembly` — for reviewing DI-injected keychain/auth services
+- `swinject`, `composition-root`, `module-assembly` — for reviewing DI-injected keychain/auth services and where they get bootstrapped
+- `spm-package-design` — auditing public surface of auth/credentials packages
 - `combine`, `rxswift` — for token refresh streams and subscription leaks that affect auth
 
 ## Related Agents (swift-toolkit)
