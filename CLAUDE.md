@@ -40,7 +40,10 @@ manual
 - `swift-toolkit:orchestrator` — выбирает профиль по `TASK_TYPE`, определяет точку старта, диспетчеризует стадии
 - `swift-toolkit:workflow-feature|bug|refactor|test|review|epic` — процедуры профилей
 - `swift-toolkit:task-new|task-move|task-status` — управление задачами
+- `swift-toolkit:swift-setup` — настройка swift-toolkit в существующем проекте (CLAUDE.md из шаблона + Tasks/)
 
-Также доступны слэш-команды: `/task-new`, `/task-run`, `/task-continue`, `/task-redo`, `/task-restart`, `/task-move`, `/task-status`.
+Слэш-команды:
+- управление задачами: `/task-new`, `/task-run`, `/task-continue`, `/task-redo`, `/task-restart`, `/task-move`, `/task-status`
+- сетап toolkit-а: `/swift-init` (новый проект с нуля), `/swift-setup` (подключить toolkit к существующему проекту)
 
-NL-фразы продолжают работать как и раньше: `создай задачу: ...`, `запусти 001`, `продолжи 001`, `перемести 001 в DONE`, `статус 001`, `переделай план для 001`, и т.д. — оркестратор активируется по триггерам в своём `description`.
+NL-фразы продолжают работать как и раньше: `создай задачу: ...`, `запусти 001`, `продолжи 001`, `перемести 001 в DONE`, `статус 001`, `переделай план для 001`, `настрой swift-toolkit`, и т.д. — соответствующий скилл активируется по триггерам в своём `description`.
