@@ -109,7 +109,7 @@ Consult the appropriate skill for testing patterns:
 
 - `swift-diagnostics` — bug hunting with static scan, simulator logs, instrumentation
 - `swift-security` — OWASP Mobile Top-10 audit
-- `init-swift` — project bootstrapping (iOS/macOS apps, SPM packages)
+- `swift-init` — project bootstrapping (iOS/macOS apps, SPM packages)
 
 ## Performance & Load Tests (On Request)
 

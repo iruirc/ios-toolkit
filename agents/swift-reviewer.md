@@ -271,7 +271,7 @@ Consult these skills when reviewing code against architectural / framework expec
 
 - `swift-diagnostics` — bug hunting; the swift-reviewer may flag issues that need diagnostics follow-up
 - `swift-security` — OWASP Mobile Top-10 audit for security-specific concerns
-- `init-swift` — project bootstrapping (iOS/macOS apps, SPM packages)
+- `swift-init` — project bootstrapping (iOS/macOS apps, SPM packages)
 
 ---
 

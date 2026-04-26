@@ -1,6 +1,6 @@
 ---
-name: init-swift
-description: "Bootstraps a new Swift/Apple project: iOS/macOS apps or SPM packages. Use when: starting a new project from scratch, setting up modular structure, initializing SwiftLint and CLAUDE.md. Interactive — always confirms stack choices before generating."
+name: swift-init
+description: "Генерирует новый Swift-проект (Xcode app или SPM package). Для подключения swift-toolkit к существующему проекту используй /swift-setup. Bootstraps a new Swift/Apple project: iOS/macOS apps or SPM packages. Use when: starting a new project from scratch, setting up modular structure, initializing SwiftLint and CLAUDE.md. Interactive — always confirms stack choices before generating."
 model: opus
 color: blue
 ---
@@ -90,10 +90,10 @@ If the user's chosen architecture is ambiguous or missing, ASK before scaffoldin
 
 ## Related Agents (swift-toolkit)
 
-After `init-swift` finishes, the project is ready for regular work via the CLAUDE.md orchestrator. Subsequent tasks will use:
+After `swift-init` finishes, the project is ready for regular work via the CLAUDE.md orchestrator. Subsequent tasks will use:
 
 - `swift-architect` — designs features within the generated architecture
-- `swift-developer` — implements features, follows the layout init-swift produced
+- `swift-developer` — implements features, follows the layout swift-init produced
 - `swift-reviewer` — reviews code against the generated structure + chosen skills
 - `swift-refactorer` — refactors without changing behavior
 - `swift-tester` — writes tests matching the chosen test framework

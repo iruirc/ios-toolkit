@@ -92,7 +92,7 @@ Consult the appropriate skill when refactoring:
 
 - `swift-diagnostics` — bug hunting with static scan, simulator logs, instrumentation
 - `swift-security` — OWASP Mobile Top-10 audit
-- `init-swift` — project bootstrapping (iOS/macOS apps, SPM packages)
+- `swift-init` — project bootstrapping (iOS/macOS apps, SPM packages)
 
 ## Output Structure
 
