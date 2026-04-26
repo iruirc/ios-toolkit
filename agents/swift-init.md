@@ -55,8 +55,10 @@ For every mode:
 - `README.md` with brief project description + how to build
 
 For apps additionally:
-- `.xcodeproj` or `Package.swift` (for SPM-first apps) with correct platforms
-- App target source files: entry point (App / AppDelegate), root Coordinator or root view, Info.plist
+- `project.yml` — XcodeGen spec, source of truth (commit it; `.xcodeproj` регенерируется по требованию)
+- `.xcodeproj` — генерируется командой `xcodegen generate` после записи `project.yml`
+- App target source files: entry point (App / AppDelegate), root Coordinator or root view, `Info.plist`
+- `.gitignore` — как минимум `*.xcodeproj/xcuserdata/`; при желании весь `*.xcodeproj/` (он регенерируется из `project.yml`)
 
 For SPM packages:
 - `Package.swift` with `platforms:`, `products:`, `targets:`, test target
@@ -74,6 +76,23 @@ For SPM packages:
 ## Library Versions
 
 Always use the latest stable swift-tools-version and Swift language version available on the user's machine. If unknown, fetch/ask before generating `Package.swift`.
+
+## Project Generation Tooling
+
+**App modes (1, 2, 3) используют [XcodeGen](https://github.com/yonaskolb/XcodeGen)** для генерации `.xcodeproj`. Ручная сборка `project.pbxproj` запрещена — это хрупкий XML, который ломается на любой версии Xcode.
+
+Алгоритм:
+
+1. **Проверь наличие `xcodegen`**: `which xcodegen`. Если не установлен — спроси пользователя один раз, ставить ли через `brew install xcodegen`. Никогда не ставь молча.
+2. **Сгенерируй `project.yml`** в корне проекта — опиши: имя проекта, платформы + deployment target, app-таргет (sources, resources, `Info.plist`), test-таргет, schemes, build settings (Swift version, code signing — `Automatic`/none для шаблона).
+3. **Запусти `xcodegen generate`** в корне — получится `.xcodeproj`.
+4. **Проверь сборку** через XcodeBuildMCP `discover_projs` + `list_schemes` — должна появиться корректная схема. При желании `build_sim` для smoke-теста.
+
+`project.yml` — источник истины. `.xcodeproj` — производный артефакт; в `.gitignore` его класть опционально, но `xcuserdata/` обязательно.
+
+**SPM-режимы (4, 5, 6) XcodeGen НЕ используют** — `Package.swift` Xcode понимает нативно (`File → Open` на папке пакета или на самом `Package.swift`).
+
+Почему XcodeGen, а не Tuist: для single-artifact-инициализации сильные стороны Tuist (граф зависимостей, кеш сборки, focus mode) не работают, а DSL на Swift + сервисная привязка — лишняя сложность. XcodeGen-овский YAML диффится по-человечески и не тянет инфраструктуру.
 
 ## Skills Reference (swift-toolkit)
 
@@ -112,7 +131,9 @@ After generating, produce a short report to the user:
 - `## Summary` — what mode was chosen and why
 - `## Folder Tree` — `tree`-like listing of the generated structure
 - `## Files Created` — list with one-line purpose each
-- `## Next Steps` — exact commands to build and run the project. **Для app-модов обязательно добавь подсказку**: «Если нужны локальные SPM-пакеты — запусти `/swift-init` отдельно в любой папке на диске, затем в Xcode `File → New → Workspace`, перетащи в workspace `.xcodeproj` приложения и папки пакетов. После этого открывай **`.xcworkspace`**, не `.xcodeproj` — иначе Xcode не увидит локальные пакеты».
+- `## Next Steps` — exact commands to build and run the project. **Для app-модов обязательно добавь**:
+  - команду регенерации проекта: `xcodegen generate` (запускать после правок `project.yml`);
+  - подсказку про локальные пакеты: «Если нужны локальные SPM-пакеты — запусти `/swift-init` отдельно в любой папке на диске, затем в Xcode `File → New → Workspace`, перетащи в workspace `.xcodeproj` приложения и папки пакетов. После этого открывай **`.xcworkspace`**, не `.xcodeproj` — иначе Xcode не увидит локальные пакеты».
 - `## CLAUDE.md Highlights` — what was auto-filled in `## Стек`, `## Режим`, `## Модули`, `## Пути`
 
 ## Multi-module projects
@@ -132,3 +153,5 @@ After generating, produce a short report to the user:
 - Never commit changes
 - Always ask before generating — confirm mode, stack, platforms
 - Do not invent third-party dependencies; use only Swift + Apple SDKs
+- For app modes (1/2/3): generate `.xcodeproj` only via XcodeGen (`xcodegen generate`); never write `project.pbxproj` by hand
+- Before running `xcodegen`, verify it's installed; if not — ask the user before installing via `brew install xcodegen`
