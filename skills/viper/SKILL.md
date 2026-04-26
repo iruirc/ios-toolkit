@@ -7,6 +7,12 @@ description: "Use when implementing VIPER architecture pattern in iOS apps. Cove
 
 Maximum separation of concerns. Each layer has a single responsibility with strict protocol boundaries.
 
+> **Related skills:**
+> - `composition-root` — where Assemblies are bootstrapped
+> - `module-assembly` — Factory pattern for module wiring (VIPER's Assembly maps onto it)
+> - `mvvm`, `clean-architecture` — alternative patterns; choose VIPER only when strict layering pays off
+> - `combine`, `rxswift` — async approach inside Interactor (legacy callback style is shown here, but modern projects use these)
+
 ## Structure
 
 ```

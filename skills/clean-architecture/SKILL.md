@@ -7,6 +7,14 @@ description: "Use when implementing Clean Architecture in iOS apps. Covers Domai
 
 Uncle Bob's layered architecture adapted for iOS. Strict dependency rules ensure business logic is independent of frameworks, UI, and external services.
 
+> **Related skills:**
+> - `mvvm` — typical Presentation-layer pattern (ViewModel binds Use Cases to View)
+> - `coordinator` — extract navigation out of Presentation
+> - `composition-root` — where Domain/Data/Presentation Assemblies are wired together
+> - `module-assembly` — Factory pattern for cross-layer module assembly
+> - `spm-package-design` — when extracting Domain/Data into separate SPM packages
+> - `combine`, `rxswift` — async return types in Repository/UseCase boundaries
+
 ## Structure
 
 ```
@@ -442,51 +450,16 @@ class FeatureViewModel {
 
 > **Note**: This ViewModel example uses async/await + closures. The ViewModel's binding approach (closures, Combine, RxSwift, @Observable) is chosen separately — see `mvvm` skill.
 
-## DI Registration
+## DI
 
-```swift
-class DomainAssembly: Assembly {
-    func assemble(container: Container) {
-        container.register(GetItemsUseCaseProtocol.self) { r in
-            GetItemsUseCase(repository: r.resolve(ItemRepositoryProtocol.self)!)
-        }
+Clean Architecture splits registrations by layer — typically one Assembly per layer (`DomainAssembly`, `DataAssembly`, `PresentationAssembly`). The dependency rule must be preserved: `PresentationAssembly` registers ViewModels that depend on Use Cases; `DomainAssembly` registers Use Cases that depend on Repository **protocols**; `DataAssembly` binds those Repository protocols to concrete implementations.
 
-        container.register(UpdateItemUseCaseProtocol.self) { r in
-            UpdateItemUseCase(repository: r.resolve(ItemRepositoryProtocol.self)!)
-        }
-    }
-}
+For full registration patterns (Swinject scopes, manual DI alternative, async bootstrap, scope strategies) see:
+- `composition-root` — where these Assemblies are bootstrapped, sync vs async, scopes
+- `module-assembly` — Factory pattern for assembling Presentation modules
+- `swinject` — Swinject-specific registration syntax (`Assembly`, `inObjectScope`, autoregister)
 
-class DataAssembly: Assembly {
-    func assemble(container: Container) {
-        container.register(ItemRemoteDataSourceProtocol.self) { r in
-            ItemRemoteDataSource(networkService: r.resolve(NetworkServiceProtocol.self)!)
-        }
-
-        container.register(ItemLocalDataSourceProtocol.self) { _ in
-            ItemLocalDataSource()
-        }
-
-        container.register(ItemRepositoryProtocol.self) { r in
-            ItemRepositoryImpl(
-                remote: r.resolve(ItemRemoteDataSourceProtocol.self)!,
-                local: r.resolve(ItemLocalDataSourceProtocol.self)!
-            )
-        }.inObjectScope(.container)
-    }
-}
-
-class PresentationAssembly: Assembly {
-    func assemble(container: Container) {
-        container.register(FeatureViewModel.self) { r in
-            FeatureViewModel(
-                getItemsUseCase: r.resolve(GetItemsUseCaseProtocol.self)!,
-                updateItemUseCase: r.resolve(UpdateItemUseCaseProtocol.self)!
-            )
-        }
-    }
-}
-```
+Whichever DI mechanism is chosen, the rule stays: **Domain layer never imports the DI framework** — Use Cases and Repository protocols are pure Swift. Only Assemblies (which live outside Domain) reference the container.
 
 ## Testing
 

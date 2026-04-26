@@ -12,7 +12,7 @@ description: "Use when implementing classic Apple MVC (Model-View-Controller) in
 > - `coordinator` — extract навигации из VC, ортогонален MVC (можно использовать MVC + Coordinator)
 > - `clean-architecture`, `viper` — для крупных проектов с явными слоями
 
-## Когда MVC уместен
+## When Appropriate
 
 | Сценарий | Использовать MVC |
 |---|---|
@@ -27,7 +27,7 @@ description: "Use when implementing classic Apple MVC (Model-View-Controller) in
 
 **Правило:** MVC — это не «упрощённый MVVM». Это паттерн с собственным набором компромиссов. Не стесняйся использовать его для подходящих задач, но и не тяни в проект, который явно из него вырос.
 
-## Структура
+## Structure
 
 ```
 Feature/
@@ -205,7 +205,7 @@ private func showDetail(for item: Item) {
 
 Для проектов 4+ экранов **лучше использовать Coordinator** (см. `coordinator` skill) — он не противоречит MVC и решает проблему расползания навигации по контроллерам.
 
-## Massive ViewController — главная проблема
+## Massive ViewController Anti-Pattern
 
 Без дисциплины VC накапливает всё подряд: data source, бизнес-логику, сетевые запросы, форматирование, навигацию, валидацию. Признаки:
 
@@ -237,7 +237,7 @@ private func showDetail(for item: Item) {
 
 → Мигрируй на MVVM (см. `mvvm` skill) или MVVM+Coordinator (для крупных).
 
-## DI в MVC
+## DI
 
 VC получает зависимости через init — никаких синглтонов, никаких `MyService.shared`.
 
@@ -258,7 +258,7 @@ final class ItemListViewController: UIViewController {
 
 Storyboard / XIB-based VC не позволяют init-инъекцию напрямую — для них либо property injection после `instantiateViewController`, либо переход на программный init.
 
-## Тестирование MVC
+## Testing
 
 ### Тестирование Model — легко
 

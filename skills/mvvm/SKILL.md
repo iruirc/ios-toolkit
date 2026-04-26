@@ -7,6 +7,13 @@ description: "Use when implementing MVVM (Model-View-ViewModel) architecture pat
 
 Separates business logic into a testable ViewModel, keeping ViewController as a thin UI binding layer.
 
+> **Related skills:**
+> - `coordinator` — extract navigation out of ViewModel/ViewController for multi-screen flows
+> - `combine`, `rxswift` — binding-framework specifics (this skill compares 5 binding approaches; the framework skills cover them in depth)
+> - `composition-root` — where ViewModels and their dependencies are wired
+> - `module-assembly` — Factory pattern for assembling View+ViewModel pairs
+> - `mvc` — predecessor pattern; see Migration Paths there for MVC → MVVM transition
+
 ## Structure
 
 ```
@@ -995,3 +1002,14 @@ Key points:
 ## When to Add Coordinator
 
 If navigation becomes complex (conditional flows, deep links, reusable screens), add the `coordinator` pattern on top. See `coordinator` skill.
+
+## Common Mistakes
+
+1. **ViewModel imports UIKit** — kills testability and breaks the layer boundary. Use value types (`String`, `Date`, `URL`); leave `UIColor`/`UIImage` to View.
+2. **ViewModel holds reference to ViewController** — strong retain cycle and inverted dependency. View binds to ViewModel, never the other way.
+3. **Mixing binding styles** — Combine `@Published` + closure callbacks + RxSwift in the same ViewModel. Pick ONE per project (see Choosing a Binding Approach).
+4. **Navigation inside ViewModel** — `navigationController?.pushViewController(...)` in ViewModel. Either signal intent via closure to the ViewController, or extract to Coordinator.
+5. **Exposing mutable state directly** — `var items: [Item]` instead of `@Published private(set) var items` (or equivalent). View must not mutate ViewModel state directly.
+6. **Skipping the protocol** — concrete `FeatureViewModel` typed in the ViewController. Define `FeatureViewModelProtocol` for test substitution and to keep boundaries explicit.
+7. **Massive ViewModel** — 600+ lines with networking, persistence, and formatting all inside. Extract Use Cases (see `clean-architecture`) or split into focused ViewModels.
+8. **`@StateObject` vs `@ObservedObject` confusion in SwiftUI** — `@StateObject` for VM owned by the view; `@ObservedObject` for VM passed in. Mixing them up causes recreation on every redraw.
