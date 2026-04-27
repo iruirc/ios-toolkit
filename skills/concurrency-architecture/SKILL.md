@@ -392,7 +392,7 @@ A few `arch-*`-spanning rules about wiring concurrency dependencies in Compositi
 
 1. **Singletons holding mutable shared state are actors.** Register them in the container with `.singleton` scope. Resolution is `await`-free (the container itself doesn't need to be an actor) but every method call on the resolved instance is `await`.
 2. **`@MainActor`-isolated singletons** (e.g. a `RootRouter`, an `AppState` `@Observable`) must be created on the main actor. In SceneDelegate this is automatic; in `@main App` use `@MainActor` on the bootstrap function.
-3. **Async bootstrap order** — if `TokenRefresher` needs `Keychain`, both are singletons, and Keychain access is `async`, the container's resolution must be ordered. Two options: (a) make all bootstrap explicit and serial in `application(_:didFinishLaunchingWithOptions:)`, (b) use a lazy async-init pattern. Pick one per project; document in CLAUDE.md.
+3. **Async bootstrap order** — if `TokenRefresher` needs `Keychain`, both are singletons, and Keychain access is `async`, the container's resolution must be ordered. Two options: (a) make all bootstrap explicit and serial in `application(_:didFinishLaunchingWithOptions:)`, (b) use a lazy async-init pattern. Pick one per project; document in CLAUDE-swift-toolkit.md.
 4. **Don't make the container itself `@MainActor`.** Background work resolves dependencies too. Keep the container nonisolated; isolate only specific registrations.
 
 ## Common Mistakes
