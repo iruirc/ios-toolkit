@@ -92,7 +92,27 @@ For reference, the templates contain these placeholders:
    - Stack traces / crashlogs → `## 6. [StackTrace]` (only if present)
    The prose follows the user's natural language. The headings themselves are not touched.
 9. **`[WORKFLOW_MODE]`** — if the user explicitly asked for a mode different from the project's `## Mode`, append the line `[WORKFLOW_MODE] = [<mode>]` immediately after the `[NEED_REVIEW]` line via Edit. Otherwise leave the template as is (the optional commented-out line stays as documentation).
-10. **Report** the created folder path to the user. Do not start the workflow.
+10. **Verify structural anchors are intact.** Read the just-written `Task.md`. Check that **every** one of the following literal strings is present (case-sensitive, byte-for-byte):
+    - `**Date:**`
+    - `[TASK_TYPE] = `
+    - `[NEED_TEST] = `
+    - `[NEED_REVIEW] = `
+    - `## 1. [Files]`
+    - `## 2. [Description]`
+    - `## 3. [Task]`
+    - `## 4. [Stack]`
+    - `## 5. [Logs]`
+    - `## 6. [StackTrace]`
+
+    For step tasks also verify `[STATUS] = `.
+
+    If ANY anchor is missing — that means the model translated / adapted / localized the template against instruction. Fix it via Edit:
+    - Find whatever non-canonical variant is present in `Task.md` for the missing anchor.
+    - Edit it back to the canonical English literal listed above (e.g. whatever stands in place of `**Date:**` becomes `**Date:**`; whatever stands in place of `## 1. [Files]` becomes `## 1. [Files]`; and so on for every missing anchor).
+    - Re-verify after each Edit. Only proceed once all anchors are present in the canonical form.
+
+    This is a defensive net for cases where the byte-for-byte copy step did not survive the model's attempt to "help" by localizing labels. The toolkit cannot run on a `Task.md` whose anchors have been translated, so this verification step is mandatory.
+11. **Report** the created folder path to the user. Do not start the workflow.
 
 ## Process — step task (sub-task of an epic)
 
