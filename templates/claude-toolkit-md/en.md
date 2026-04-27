@@ -47,7 +47,7 @@ Task routing, profile, and stage logic lives in skills:
 - `swift-toolkit:orchestrator` — picks the profile by `TASK_TYPE`, determines the start point, dispatches stages
 - `swift-toolkit:workflow-feature|bug|refactor|test|review|epic` — profile procedures
 - `swift-toolkit:task-new|task-move|task-status` — task management
-- `swift-toolkit:swift-setup` — configures swift-toolkit in an existing project (CLAUDE.md from template + Tasks/)
+- `swift-toolkit:swift-setup` — configures swift-toolkit in an existing project (creates `CLAUDE-swift-toolkit.md` from template, inserts `@./CLAUDE-swift-toolkit.md` import into `CLAUDE.md`, creates `Tasks/`)
 - `swift-toolkit:swift-lang` — switches the project's prompt language
 
 Slash commands:

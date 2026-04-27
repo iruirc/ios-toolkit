@@ -87,5 +87,5 @@ User-facing card and table layouts are defined as locale keys (see `locales/<lan
 
 - Does NOT modify files — only reads `Task.md` / `Plan.md` / `Done.md` / `Research.md`.
 - Does NOT start workflows and does not call workflow-* or orchestrator — informational only.
-- Does NOT resolve stack / mode (that is the orchestrator's job); shows only what is physically recorded in the task files and/or `CLAUDE.md`.
+- Does NOT resolve stack / mode (that is the orchestrator's job); shows only what is physically recorded in the task files and/or `CLAUDE-swift-toolkit.md`.
 - Does NOT create backups and does not touch `_archive/`.

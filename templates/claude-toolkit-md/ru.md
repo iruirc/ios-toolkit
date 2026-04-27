@@ -47,7 +47,7 @@ manual
 - `swift-toolkit:orchestrator` — выбирает профиль по `TASK_TYPE`, определяет точку старта, диспетчеризует стадии
 - `swift-toolkit:workflow-feature|bug|refactor|test|review|epic` — процедуры профилей
 - `swift-toolkit:task-new|task-move|task-status` — управление задачами
-- `swift-toolkit:swift-setup` — настройка swift-toolkit в существующем проекте (CLAUDE.md из шаблона + Tasks/)
+- `swift-toolkit:swift-setup` — настройка swift-toolkit в существующем проекте (создаёт `CLAUDE-swift-toolkit.md` из шаблона, вставляет `@./CLAUDE-swift-toolkit.md` в `CLAUDE.md`, создаёт `Tasks/`)
 - `swift-toolkit:swift-lang` — переключение языка подсказок toolkit
 
 Слэш-команды:
