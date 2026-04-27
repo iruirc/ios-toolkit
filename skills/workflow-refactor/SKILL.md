@@ -14,14 +14,14 @@ The profile workflow for tasks with `[TASK_TYPE] = REFACTOR`. Implements the seq
 
 Before producing any user-facing string:
 
-1. Read `CLAUDE.md` from the project root.
+1. Read `CLAUDE-swift-toolkit.md` from the project root.
 2. Find the `## Language` section.
 3. Take the first non-empty line in that section, lowercase and trim it. That is `<lang>`.
 4. If `<lang>` is `en` or `ru`, use it. Otherwise default to `en`.
 5. Read this skill's `locales/<lang>.md`. Look up keys by H2 header.
 6. If a key is missing, fall back to the same key in `locales/en.md`. If still missing, that's a bug — fail loudly with key name.
 
-Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE.md per string.
+Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-swift-toolkit.md per string.
 
 ## 1. Input Contract
 
