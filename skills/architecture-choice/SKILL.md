@@ -17,11 +17,11 @@ A **meta-skill** for picking a stack at day-one or at a major refactor. Doesn't 
 
 ## When to Use
 
-- New project (`swift-init`, `swift-setup`) and CLAUDE.md `## Stack` is empty
+- New project (`swift-init`, `swift-setup`) and CLAUDE-swift-toolkit.md `## Stack` is empty
 - Major refactor and a concrete trigger fired: signals from `arch-mvc` "Signals that MVC has run out of steam"; team grows past 3 devs; domain develops explicit Use Cases; compile time / merge conflicts hurt enough to consider modularization
 - User asks "which architecture should I pick", "what should I use for a new iOS project", "MVVM or Clean"
 
-If `CLAUDE.md → ## Stack` is already filled and the user is not refactoring — **don't run this skill**. Follow the chosen stack's skill instead.
+If `CLAUDE-swift-toolkit.md → ## Stack` is already filled and the user is not refactoring — **don't run this skill**. Follow the chosen stack's skill instead.
 
 ## Fast Path (skip the questionnaire)
 
@@ -108,18 +108,18 @@ Cross-cutting (always, regardless of pattern):
 
 1. **Picking the most ambitious stack "just in case"** — Clean+VIPER+SPM+Swinject for a 5-screen utility wastes weeks and obscures intent
 2. **Mixing patterns by feature** — one feature MVC, another MVVM, third Clean — newcomers can't predict where logic lives. (Hybrid UIKit+SwiftUI is **not** this — same patterns, different UI frameworks)
-3. **Choosing without writing it down** — record the choice in `CLAUDE.md` `## Stack` so every future task reads from one source of truth
+3. **Choosing without writing it down** — record the choice in `CLAUDE-swift-toolkit.md` `## Stack` so every future task reads from one source of truth
 4. **Refusing to migrate when signals appear** — see `arch-mvc` "Signals that MVC has run out of steam". Stacks fit a project's current size, not its lifetime
 5. **Letting frameworks pick architecture** — "we use SwiftUI, therefore MVVM" is fine; "we use Combine, therefore MVVM-C" is not. Frameworks are tools, not patterns
 
 ## How to Use This Skill
 
-1. **Read CLAUDE.md `## Stack`.** If filled and user isn't refactoring — this skill is done; follow the chosen stack's skill.
+1. **Read CLAUDE-swift-toolkit.md `## Stack`.** If filled and user isn't refactoring — this skill is done; follow the chosen stack's skill.
 2. **Try Fast Path.** If a Fast Path scenario clearly applies — skip the questionnaire and recommend.
 3. **Otherwise collect the Five Axes** from the user via `AskUserQuestion` (or text fallback). Don't infer from project name or vibes.
 4. **Pick the matching row** from the Decision Matrix. If two rows fit — apply the When-in-Doubt defaults.
-5. **Write the choice into `CLAUDE.md` `## Stack`** in the existing bullet format (`- Architecture: <stack>`, `- UI: <framework>`, etc. — don't invent your own fields). Record a short context line above the section as a comment: `<!-- Chosen YYYY-MM-DD: <axes summary> → <stack> -->`.
-6. **If user disagrees with the recommendation** — record their choice as-is, then add `Objection: <reason from matrix or Fast Path>` either in `CLAUDE.md` directly under `## Stack`, or in `Done.md → ## Objections` of the active task. Per CLAUDE.md "Persona" — risks must be visible.
+5. **Write the choice into `CLAUDE-swift-toolkit.md` `## Stack`** in the existing bullet format (`- Architecture: <stack>`, `- UI: <framework>`, etc. — don't invent your own fields). Record a short context line above the section as a comment: `<!-- Chosen YYYY-MM-DD: <axes summary> → <stack> -->`.
+6. **If user disagrees with the recommendation** — record their choice as-is, then add `Objection: <reason from matrix or Fast Path>` either in `CLAUDE-swift-toolkit.md` directly under `## Stack`, or in `Done.md → ## Objections` of the active task. Per CLAUDE-swift-toolkit.md "Persona" — risks must be visible.
 7. **Hand control** to `swift-init` (new project) or `swift-architect` (existing project) with the skill list from Stack Cookbook.
 
-The output of this skill is one paragraph in CLAUDE.md and a list of skills to follow next — nothing more. Don't generate code here.
+The output of this skill is one paragraph in CLAUDE-swift-toolkit.md and a list of skills to follow next — nothing more. Don't generate code here.
