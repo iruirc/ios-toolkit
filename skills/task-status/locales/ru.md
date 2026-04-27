@@ -32,14 +32,14 @@ Plan.md создаётся
 Профиль: {profile} | Режим: {mode}
 Прогресс: {done}/{total} фаз ✅ | {in_progress} 🔄 | {pending} ⬜
 Стадия: {stage} → Фаза {phase}
-Resume: "{resume}"
+Продолжить: "{resume}"
 Артефакты: {artifacts}
 
 ## card_todo_template
 Задача {task_id}: TODO
 Профиль: {profile} (по TASK_TYPE) | Режим: {mode} (по умолчанию)
 Прогресс: не начата
-Resume: {resume}
+Продолжить: {resume}
 Артефакты: {artifacts}
 
 ## card_done_template
@@ -52,5 +52,5 @@ Resume: {resume}
 ACTIVE задачи:
 
 ## table_header_columns
-| ID  | Название       | Стадия         | Прогресс  | Resume                    |
+| ID  | Название       | Стадия         | Прогресс  | Продолжить с              |
 |-----|----------------|----------------|-----------|---------------------------|
