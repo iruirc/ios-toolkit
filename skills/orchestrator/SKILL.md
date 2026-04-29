@@ -70,13 +70,25 @@ The source of truth is `Plan.md` (the progress table with checkboxes `⬜ 🔄 �
 
 Checkbox legend: `⬜` = todo (planned), `🔄` = in progress, `✅` = done, `⏸` = paused, `🚫` = blocked, `⊘` = skipped.
 
+State Detection is **profile-aware** and **purely file-existence driven** — the orchestrator never parses inline content of `Task.md`. Per-profile mapping from filesystem markers in the task folder to a `start_stage`:
+
+| Profile | `Plan.md` exists | `Research.md` exists | `Reproduce.md` exists | None of the above |
+|---|---|---|---|---|
+| FEATURE | first `⬜` phase | `Plan` | n/a | `Research` |
+| EPIC | first `⬜` phase | `Plan` | n/a | `Research` |
+| BUG | first `⬜` phase | `Plan` | `Diagnose` | `Reproduce` |
+| REFACTOR | first `⬜` phase | `Plan` | n/a | `Analyze` |
+| TEST | first `⬜` phase | `Plan` | n/a | `Analyze` |
+| REVIEW | n/a | n/a | n/a | `Review` (single-stage profile) |
+
 Algorithm:
 
 1. Task folder is in `Tasks/DONE/` OR `Done.md` exists → the task is considered finished. `AskUserQuestion`: confirm a full restart (=`action=restart-full`), reopen (move back into `ACTIVE/`), or exit.
-2. `Plan.md` exists → parse the progress table and phase checkboxes; resume from the first unfinished stage (the first `⬜` or `🔄`).
-   - If the progress table is missing or corrupt (Plan.md exists but does not parse) — the orchestrator considers stage `Plan` complete but cannot determine the resume point: it starts at the profile's `Execute` stage (if any) with a warning to the user; otherwise it asks explicitly via `AskUserQuestion`.
-3. No `Plan.md`, but `Research.md` exists → start at the profile's `Plan` stage.
-4. Nothing exists → start at the profile's first stage. The exact name of the first stage is determined by the corresponding `swift-toolkit:workflow-<profile>` skill; the orchestrator does not duplicate that list.
+2. Walk the columns of the row matching the current profile **left to right**; the first match determines `start_stage`. For BUG specifically: `Plan.md` wins over `Research.md`, which wins over `Reproduce.md`.
+3. `Plan.md` exists but its progress table is missing or unparseable → consider stage `Plan` complete; start at the next stage in the profile's sequence (FEATURE/EPIC: `Execute`; BUG: `Fix`; REFACTOR: `Refactor`; TEST: `Write`); for REVIEW (no next stage), ask explicitly via `AskUserQuestion`. Add a warning to the user.
+4. **Inline-content note.** If `Task.md` carries embedded reproduce/research/analyze material but no artifact files exist in the task folder, State Detection still picks the first stage of the profile (per the rightmost column of the table). The user can override via the `confirm_dispatch` picker (Resolution Algorithm step 6) or by passing `--from <stage>`.
+
+**Invariant:** `start_stage` produced by State Detection is always a member of the target profile's stage list. Defense-in-depth validation runs in Resolution Algorithm step 5.5 regardless.
 
 **De-sync:**
 - `Task.md` is newer than `Plan.md` → warn that the task description may have changed after planning; suggest `redo Plan`.
@@ -118,9 +130,33 @@ Algorithm:
    action=restart, stage_target=X → start at X, re-execute X and all subsequent stages
    action=restart-full            → start at the profile's first stage, re-execute all
 
+5.5. Validate start_stage against profile.stages:
+   • profile_stages := ordered stage list of the target profile (canonical source: workflow-<profile> SKILL.md heading)
+   • if start_stage ∈ profile_stages → continue
+   • else (defense-in-depth — covers bugs in State Detection, user typos in `--from`, future code paths):
+       if mode == manual:
+           AskUserQuestion using key `auq_stage_recovery_question`
+              placeholders: `{profile}`, `{invalid_stage}`, `{profile_stages_list}`
+              options:
+                  • one option per stage in profile_stages (in profile order)
+                  • the stage State Detection (Section "State Detection") would have picked is annotated
+                    with locale key `auq_stage_recovery_recommended_suffix`
+                  • final option: locale key `confirm_dispatch_cancel`
+           → user picks stage S → start_stage := S, continue
+           → user picks Cancel → return {status: cancelled, reason: status_cancelled_user_no}
+       if mode == auto:
+           return {status: error, reason: error_stage_not_in_profile,
+                   notes: locale `error_stage_not_in_profile` with placeholders filled}
+
 6. Confirmation in manual mode:
    if mode == manual:
        AskUserQuestion using key `confirm_dispatch` with placeholders `{profile}`, `{mode}`, `{stack}`, `{start_stage}`
+       options (in this order):
+           1. locale key `confirm_dispatch_yes`     → dispatch as resolved
+           2. locale key `auq_confirm_dispatch_pick_stage` → open the same picker as in step 5.5,
+              but using locale key `auq_stage_override_question` for the title (no `{invalid_stage}`
+              placeholder); on user pick, `start_stage := picked`, then dispatch
+           3. locale key `confirm_dispatch_cancel`  → return {status: cancelled, reason: status_cancelled_user_no}
    else:
        skip confirmation, go straight to Dispatch
 
@@ -222,7 +258,7 @@ Action and archival semantics:
 Command validation:
 - "only Plan" / "start from Plan" without `Research.md` (for profiles that have a preceding `Research`) → error using key `error_research_required` with placeholder `{stage}`.
 - "redo <stage>" with no `<stage>` artifact present → error using key `error_redo_no_artifact` with placeholder `{stage}`; suggest `run --from <stage>`.
-- A stage name not from the current profile → error listing the allowed stages.
+- An out-of-profile stage name → handled centrally in Resolution Algorithm step 5.5 (manual: stage picker; auto: hard error using key `error_stage_not_in_profile`).
 
 ## Subagent Context
 
