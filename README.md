@@ -148,7 +148,7 @@ swift-toolkit ships with English source-of-truth and per-language locale files f
 - Switch any time with `/swift-lang en` or `/swift-lang ru`.
 - Skill triggers are bilingual — phrase your request in Russian or English regardless of the active language; only the response language changes.
 
-Adding a new language: see `docs/superpowers/specs/2026-04-27-i18n-conventions.md`.
+Adding a new language: see [`conventions/i18n.md`](conventions/i18n.md).
 
 ---
 

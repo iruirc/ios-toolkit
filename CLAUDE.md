@@ -28,7 +28,7 @@ en
 
 ## Conventions
 
-- See `docs/superpowers/specs/2026-04-27-i18n-conventions.md` for the i18n convention reference.
+- See `conventions/i18n.md` for the i18n convention reference.
 - See `docs/superpowers/plans/2026-04-27-i18n-localization.md` for the i18n migration plan and progress.
 
 ## When working on this repo
