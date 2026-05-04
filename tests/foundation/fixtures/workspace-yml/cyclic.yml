@@ -1,0 +1,5 @@
+workspace: { name: cyc }
+remotes: [origin]
+packages:
+  - { name: A, archetype: engine, git: {origin: x}, version: 0.1.0, deps: [B] }
+  - { name: B, archetype: engine, git: {origin: x}, version: 0.1.0, deps: [A] }

@@ -1,0 +1,5 @@
+# Hi
+<!-- WORKSPACE_A_BEGIN -->
+<!-- WORKSPACE_B_BEGIN -->
+<!-- WORKSPACE_A_END -->
+<!-- WORKSPACE_B_END -->

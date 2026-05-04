@@ -1,0 +1,6 @@
+# Hi
+<!-- WORKSPACE_PKG_LIST_BEGIN -->
+first
+<!-- WORKSPACE_PKG_LIST_BEGIN -->
+second
+<!-- WORKSPACE_PKG_LIST_END -->
