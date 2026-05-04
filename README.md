@@ -155,3 +155,14 @@ Adding a new language: see [`conventions/i18n.md`](conventions/i18n.md).
 ## Roadmap
 
 Current state and gaps — in [`docs/skills-roadmap.md`](docs/skills-roadmap.md).
+
+---
+
+## Development
+
+### Workspace Foundation tooling (optional, only when working on `workspace-*` skills)
+
+- `yq` (mikefarah, v4+): `brew install yq` — required at runtime by `workspace-init` / `workspace-add` / `workspace-docs-regen`.
+- `bats-core` (≥1.10): `brew install bats-core` — required for running Foundation tests.
+- `gh`: optional, only needed when `bootstrap.use_gh: true` in a user `workspace.yml`.
+- `xcodegen`: optional, only needed when `example_app: true` (Cluster 3).
