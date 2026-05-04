@@ -34,18 +34,28 @@ wsmark::write() {
   fi
   local begin="<!-- WORKSPACE_${name}_BEGIN -->"
   local end="<!-- WORKSPACE_${name}_END -->"
-  local new_content
-  new_content="$(cat -)"
+  local nc_file
+  nc_file="$(mktemp -t wsmark-nc.XXXXXX)" || return 4
+  cat - > "$nc_file"
   local tmp
-  tmp="$(mktemp -t wsmark.XXXXXX)" || return 4
-  awk -v b="$begin" -v e="$end" -v nc="$new_content" '
-    BEGIN { inside = 0 }
+  tmp="$(mktemp -t wsmark.XXXXXX)" || { rm -f "$nc_file"; return 4; }
+  awk -v b="$begin" -v e="$end" -v nc_file="$nc_file" '
+    BEGIN {
+      inside = 0
+      nc = ""
+      while ((getline line < nc_file) > 0) {
+        if (nc == "") nc = line
+        else nc = nc "\n" line
+      }
+      close(nc_file)
+    }
     $0 == b { print; print nc; inside = 1; next }
     $0 == e { print; inside = 0; next }
     inside { next }
     { print }
-  ' "$file" > "$tmp" || { rm -f "$tmp"; return 4; }
+  ' "$file" > "$tmp" || { rm -f "$tmp" "$nc_file"; return 4; }
   mv -- "$tmp" "$file"
+  rm -f "$nc_file"
   return 0
 }
 
