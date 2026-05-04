@@ -1,0 +1,8 @@
+import XCTest
+@testable import {{PACKAGE_NAME}}
+
+final class {{PACKAGE_NAME}}Tests: XCTestCase {
+    func test_version_isNonEmpty() {
+        XCTAssertFalse({{PACKAGE_NAME}}.version.isEmpty)
+    }
+}

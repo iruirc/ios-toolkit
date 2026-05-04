@@ -1,0 +1,28 @@
+# workspace.yml — single source of truth for this workspace.
+# See docs/workspace-yml-reference.md for the full schema.
+
+workspace:
+  name: PLACEHOLDER_WS_NAME
+  xcworkspace: true
+  code_workspace: true
+  tasks:
+    path: ./Tasks
+    symlink_mode: local
+
+remotes:
+  - origin
+
+defaults:
+  default_branch: main
+  push_remotes: all
+  release_strategy: patch
+
+bootstrap:
+  use_gh: false
+  push_after_init: false
+  generate_local_skills: false
+  commit_after_init: true
+  initial_commit_message: Initial commit
+  git_author: null
+
+packages: []

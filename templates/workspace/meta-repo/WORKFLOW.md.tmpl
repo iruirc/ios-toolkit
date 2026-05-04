@@ -1,0 +1,15 @@
+# {{WORKSPACE_NAME}} — Workflow
+
+## Daily ops
+
+- Switch branch across all repos: `workspace-branch createAndSwitch <branch>` (Cluster 2)
+- Switch deps to local overrides: `workspace-deps-switch local` (Cluster 2)
+- Resolve packages: `workspace-resolve` (Cluster 2)
+- Release: `workspace-release` (Cluster 2)
+- Add a package: `workspace-add --new <name>` or `workspace-add --incorporate <path>`
+- Regenerate doc sections: `workspace-docs-regen`
+
+## Troubleshooting
+
+- Marker mismatch: `workspace-docs-regen --repair`.
+- Drift in CI: `workspace-docs-regen --check`.

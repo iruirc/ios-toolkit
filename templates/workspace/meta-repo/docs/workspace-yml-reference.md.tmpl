@@ -1,0 +1,49 @@
+# `workspace.yml` reference
+
+This file is the single source of truth for the workspace. Edit it, then run `workspace-docs-regen` to refresh derived artifacts.
+
+## Top-level keys
+
+| Key | Required | Type | Default | Notes |
+|-----|----------|------|---------|-------|
+| `workspace.name` | yes | string | — | Matches `[A-Za-z][A-Za-z0-9-]*` |
+| `workspace.xcworkspace` | no | bool | true | Generate `.xcworkspace` |
+| `workspace.code_workspace` | no | bool | true | Generate `.code-workspace` |
+| `workspace.tasks.path` | no | string | `./Tasks` | Where Tasks/ lives |
+| `workspace.tasks.symlink_mode` | no | enum | `local` | `local` (gitignored) or `commit` (relative path only) |
+| `project` | no | map | — | Optional whole block |
+| `package_groups` | no | list | `[]` | Required iff packages reference groups |
+| `packages` | yes | list (≥1) | — | Per-package config |
+| `remotes` | yes | list (≥1) | — | Top-level remote names |
+| `defaults.default_branch` | no | string | `git config init.defaultBranch \|\| main` | |
+| `defaults.push_remotes` | no | enum | `all` | `all` / `primary` / `<remote-name>` |
+| `defaults.release_strategy` | no | enum | `patch` | `patch` / `minor` / `major` |
+| `bootstrap.use_gh` | no | bool | false | Create GitHub repos via `gh` |
+| `bootstrap.push_after_init` | no | bool | false | Push initial commits |
+| `bootstrap.generate_local_skills` | no | bool | false | Generate `.claude/skills/v-*/` shims |
+| `bootstrap.commit_after_init` | no | bool | true | Auto-commit initial scaffolding |
+| `bootstrap.initial_commit_message` | no | string | `Initial commit` | |
+| `bootstrap.git_author` | no | string | null | Format: `Name <email>` |
+
+## `packages[]` keys
+
+| Key | Required | Type | Default | Notes |
+|-----|----------|------|---------|-------|
+| `name` | yes | string | — | Unique, matches `[A-Za-z][A-Za-z0-9]*` |
+| `archetype` | yes | enum | — | `api-contract` / `engine` / `library` / `feature` |
+| `group` | conditional | string | — | Required iff `package_groups` non-empty |
+| `git` | yes | map | — | Non-empty; keys ⊆ top-level `remotes[]` |
+| `version` | yes | semver | — | `M.m.p` only (no pre-release/build) |
+| `deps` | no | list | `[]` | Workspace-internal package names |
+| `external_deps` | no | list | `[]` | SPM remote dependencies |
+| `allowed_deps` | no | list | `[]` (= archetype defaults) | Hard override of archetype rules |
+| `example_app` | no | bool | false | Generate `Example/` (Cluster 3) |
+| `example_platform` | conditional | enum | — | Required iff `example_app: true`; `ios`/`macos`/`both` |
+
+## Validation rules
+
+(See spec `2026-05-02-workspace-foundation-design.md` for complete rule numbering.)
+
+## Examples
+
+(See `tests/foundation/fixtures/workspace-yml/` in the toolkit repo for negative + positive fixtures.)

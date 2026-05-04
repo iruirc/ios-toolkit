@@ -130,3 +130,14 @@ teardown() {
   [ "$status" -eq 2 ]
   [[ "$output" == *"git_author"* ]]
 }
+
+@test "wsarch::boundary_text returns text for engine" {
+  run zsh -c "source '$(ws_lib_path workspace-archetypes.zsh)'; wsarch::boundary_text engine"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Engine package"* ]]
+}
+
+@test "wsarch::boundary_text errors on unknown archetype" {
+  run zsh -c "source '$(ws_lib_path workspace-archetypes.zsh)'; wsarch::boundary_text widget"
+  [ "$status" -eq 4 ]
+}

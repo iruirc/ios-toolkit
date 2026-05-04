@@ -1,0 +1,26 @@
+# {{WORKSPACE_NAME}}
+
+Multi-package SPM workspace.
+
+## Packages
+
+<!-- WORKSPACE_PKG_LIST_BEGIN -->
+<!-- WORKSPACE_PKG_LIST_END -->
+
+## Quickstart
+
+```bash
+git clone <meta-repo-url> {{WORKSPACE_NAME}}-meta
+cd {{WORKSPACE_NAME}}-meta
+# clone all package repos:
+yq -p=yaml -o=tsv eval '.packages[] | [.name, .git.origin] | @tsv' workspace.yml \
+  | while IFS=$'\t' read -r name url; do git clone "$url" "../packages/$name"; done
+open {{WORKSPACE_NAME}}.xcworkspace
+```
+
+## See also
+
+- `ARCHITECTURE.md` — layer table + dependency graph.
+- `WORKFLOW.md` — daily ops (branch / deps-switch / release).
+- `CONTRIBUTING.md` — archetype rules.
+- `docs/workspace-yml-reference.md` — full schema reference.
