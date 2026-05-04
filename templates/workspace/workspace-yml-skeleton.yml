@@ -1,5 +1,5 @@
 # workspace.yml — single source of truth for this workspace.
-# See docs/workspace-yml-reference.md for the full schema.
+# See README.md "## Schema" section for the full schema reference.
 
 workspace:
   name: PLACEHOLDER_WS_NAME
