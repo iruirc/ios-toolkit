@@ -45,7 +45,6 @@ Verify caller cwd is inside a workspace meta-repo (look for `workspace.yml` in c
 7. **Soft mutate** target package files:
    - If `<target-dir>/CLAUDE.md` does NOT exist → render template (with archetype boundary text), `git add` it (no commit).
    - If exists → emit `warn_existing_claude_md`.
-   - Same logic for `CHANGELOG.md` (template + add) vs `warn_existing_changelog`.
 8. Invoke `workspace-docs-regen` (subshell) for derived artifacts.
 9. Emit `report_success_incorporate`.
 

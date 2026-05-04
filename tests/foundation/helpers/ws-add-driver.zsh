@@ -26,11 +26,3 @@ if [[ ! -f "$target/CLAUDE.md" ]]; then
 else
   print "warning: $target/CLAUDE.md already exists; not overwritten"
 fi
-
-# Soft-mutate CHANGELOG.md
-if [[ ! -f "$target/CHANGELOG.md" ]]; then
-  cp "$templates_root/package/CHANGELOG.md.tmpl" "$target/CHANGELOG.md"
-  print "wrote $target/CHANGELOG.md"
-else
-  print "warning: $target/CHANGELOG.md already exists; not overwritten"
-fi

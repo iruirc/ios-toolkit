@@ -11,7 +11,6 @@ teardown() { ws_cleanup_tmpdirs; }
   run "$(ws_repo_root)/tests/foundation/helpers/ws-add-driver.zsh" "$target" engine BareKit
   [ "$status" -eq 0 ]
   [ -f "$target/CLAUDE.md" ]
-  [ -f "$target/CHANGELOG.md" ]
   run grep -F '**Archetype**: engine' "$target/CLAUDE.md"
   [ "$status" -eq 0 ]
 }

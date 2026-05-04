@@ -52,7 +52,7 @@ Maintain `<workspace-parent>/.workspace-init.state` (newline-delimited list of c
 | Step | Action | Idempotency check |
 |------|--------|-------------------|
 | s01_meta_dir | mkdir `<workspace-parent>/<workspace-name>-meta/` | dir exists |
-| s02_meta_files | render meta-repo templates from `templates/workspace/meta-repo/`, recursively (preserves subdir layout, e.g. `docs/`). Substitutes `{{WORKSPACE_NAME}}`. Excludes `xcworkspace-contents.xml.tmpl` and `code-workspace.json.tmpl` — those are handled by s07 / s08. | per-file `[[ -f ]]` |
+| s02_meta_files | render meta-repo templates from `templates/workspace/meta-repo/`, recursively (preserves subdir layout). Substitutes `{{WORKSPACE_NAME}}`. Excludes `xcworkspace-contents.xml.tmpl` and `code-workspace.json.tmpl` — those are handled by s07 / s08 (NOT rendered by s02). | per-file `[[ -f ]]` |
 | s03_meta_git | `git init -b <default-branch>` in meta-repo | `[[ -d .git ]]` |
 | s04_meta_yml | copy `workspace.yml` into meta-repo | `[[ -f workspace.yml ]]` |
 | s05_groups | mkdir each `package_groups[].dir` (or `packages/` if no groups) under workspace-parent | dir exists |

@@ -19,9 +19,10 @@ ws_name="$(wsyml::get '.workspace.name')"
 meta_dir="$ws_parent/${ws_name}-meta"
 mkdir -p "$meta_dir"
 
-# Copy meta-repo templates with placeholder substitution.
+# Copy meta-repo templates with placeholder substitution. Walk recursively so any
+# subdirs in the template tree are preserved.
 templates_root="${0:A:h}/../../../templates/workspace"
-for src in "$templates_root/meta-repo"/*.tmpl "$templates_root/meta-repo/docs"/*.tmpl; do
+while IFS= read -r src; do
   rel="${src#$templates_root/meta-repo/}"
   rel="${rel%.tmpl}"
   # Skip LLM-driven workspace artifacts (rendered/filled by the skill body, not the driver).
@@ -31,7 +32,7 @@ for src in "$templates_root/meta-repo"/*.tmpl "$templates_root/meta-repo/docs"/*
   dst="$meta_dir/$rel"
   mkdir -p "${dst:h}"
   sed "s|{{WORKSPACE_NAME}}|$ws_name|g" "$src" > "$dst"
-done
+done < <(find "$templates_root/meta-repo" -type f -name '*.tmpl')
 
 cp "$ws_yml" "$meta_dir/workspace.yml"
 ( cd "$meta_dir" && git init -q -b main && touch .gitkeep )

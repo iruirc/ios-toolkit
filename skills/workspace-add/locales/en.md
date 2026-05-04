@@ -26,9 +26,6 @@ Allowed deps (default = archetype rule):
 warning: {path}/CLAUDE.md already exists; not overwritten.
 to bring it under toolkit management: workspace-docs-regen --repair --pkg {name}
 
-## warn_existing_changelog
-warning: {path}/CHANGELOG.md already exists; not overwritten.
-
 ## report_success_new
 Package {name} created at {path}. Workspace artifacts regenerated.
 
