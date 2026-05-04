@@ -1,0 +1,33 @@
+workspace:
+  name: GroupedWS
+remotes:
+  - origin
+  - originLocal
+package_groups:
+  - name: common
+    dir: commonPackages
+  - name: domain
+    dir: domainPackages
+packages:
+  - name: AKit
+    archetype: api-contract
+    group: common
+    git:
+      origin: git@github.com:user/AKit.git
+    version: 0.1.0
+  - name: BEngine
+    archetype: engine
+    group: common
+    git:
+      origin: git@github.com:user/BEngine.git
+    version: 0.1.0
+    deps: [AKit]
+    allowed_deps: [AKit]
+  - name: CFeature
+    archetype: feature
+    group: domain
+    git:
+      origin: git@github.com:user/CFeature.git
+    version: 0.1.0
+    deps: [AKit, BEngine]
+    allowed_deps: [AKit, BEngine]

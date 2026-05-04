@@ -1,0 +1,10 @@
+workspace: { name: badgrp }
+remotes: [origin]
+package_groups:
+  - { name: common, dir: commonPackages }
+packages:
+  - name: A
+    archetype: api-contract
+    group: nope
+    git: { origin: x }
+    version: 0.1.0

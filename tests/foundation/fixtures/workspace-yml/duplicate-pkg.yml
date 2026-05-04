@@ -1,0 +1,11 @@
+workspace: { name: dup }
+remotes: [origin]
+packages:
+  - name: A
+    archetype: api-contract
+    git: { origin: x }
+    version: 0.1.0
+  - name: A
+    archetype: engine
+    git: { origin: y }
+    version: 0.1.0

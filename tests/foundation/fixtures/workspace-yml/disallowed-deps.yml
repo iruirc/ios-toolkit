@@ -1,0 +1,16 @@
+workspace: { name: dd }
+remotes: [origin]
+packages:
+  - { name: A, archetype: api-contract, git: {origin: x}, version: 0.1.0 }
+  - name: B
+    archetype: engine
+    git: { origin: x }
+    version: 0.1.0
+    deps: [A]
+    allowed_deps: []   # explicit empty, but deps non-empty — allowed (default rules apply)
+  - name: C
+    archetype: engine
+    git: { origin: x }
+    version: 0.1.0
+    deps: [A]
+    allowed_deps: [WrongOnly]   # A not in allowed_deps

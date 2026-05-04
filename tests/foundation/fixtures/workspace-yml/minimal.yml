@@ -1,0 +1,10 @@
+workspace:
+  name: minimal-ws
+remotes:
+  - origin
+packages:
+  - name: OnePkg
+    archetype: api-contract
+    git:
+      origin: git@github.com:user/OnePkg.git
+    version: 0.1.0

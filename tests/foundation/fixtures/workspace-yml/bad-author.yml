@@ -1,0 +1,6 @@
+workspace: { name: ba }
+remotes: [origin]
+packages:
+  - { name: A, archetype: api-contract, git: {origin: x}, version: 0.1.0 }
+bootstrap:
+  git_author: "no email format"

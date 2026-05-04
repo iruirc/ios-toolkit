@@ -1,0 +1,4 @@
+workspace: { name: bv }
+remotes: [origin]
+packages:
+  - { name: A, archetype: engine, git: {origin: x}, version: "v1" }

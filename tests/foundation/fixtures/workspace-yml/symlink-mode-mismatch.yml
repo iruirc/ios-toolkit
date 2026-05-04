@@ -1,0 +1,8 @@
+workspace:
+  name: smm
+  tasks:
+    path: /Users/foo/work/tasks
+    symlink_mode: commit
+remotes: [origin]
+packages:
+  - { name: A, archetype: api-contract, git: {origin: x}, version: 0.1.0 }

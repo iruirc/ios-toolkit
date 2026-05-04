@@ -1,0 +1,7 @@
+workspace: { name: brk }
+remotes: [origin]
+packages:
+  - name: A
+    archetype: engine
+    git: { gitolite: x }
+    version: 0.1.0
