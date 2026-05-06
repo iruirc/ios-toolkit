@@ -156,13 +156,13 @@ Adding a new language: see [`conventions/i18n.md`](conventions/i18n.md).
 
 Cluster 1 (Foundation) of the multi-package SPM workspace extension is available:
 
-- `swift-toolkit:workspace-init` — bootstrap a new workspace (interactive Q&A or batch from `workspace.yml`).
+- `swift-toolkit:workspace-init` — bootstrap a new workspace (interactive Q&A or batch from `workspace.yml`). When `project:` block is present, also generates one separate git-repo per declared platform (ios/macos), each containing an xcodegen app project with workspace packages wired as local-path SPM dependencies.
 - `swift-toolkit:workspace-add` — add a new package or incorporate an existing standalone package.
 - `swift-toolkit:workspace-docs-regen` — regenerate marker-delimited doc sections.
 
-Foundation covers the workspace.yml schema, parser, package + meta-repo templates, and the marker-protected doc regeneration loop. Cluster 2 (Git Tooling) and Cluster 3 (Quality) are upcoming.
+Foundation covers the workspace.yml schema, parser, package + meta-repo + project-repo templates, and the marker-protected doc regeneration loop. Cluster 2 (Git Tooling) and Cluster 3 (Quality) are upcoming.
 
-Required: `yq` v4+. Optional: `gh`, `xcodegen`.
+Required: `yq` v4+. Optional: `gh`, `xcodegen` (xcodegen required when project block is used).
 
 ---
 
