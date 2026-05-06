@@ -1,0 +1,35 @@
+workspace:
+  name: FullProj
+remotes: [origin]
+project:
+  name: FullApp
+  apps:
+    ios:
+      repo: FullApp-iOS
+      stack:
+        ui_framework: swiftui
+        di: factory
+        architecture: mvvm-coordinator
+        async: async-await
+        min_platforms:
+          ios: "17.0"
+    macos:
+      repo: FullApp-macOS
+      stack:
+        ui_framework: swiftui
+        di: factory
+        architecture: mvvm
+        async: async-await
+        min_platforms:
+          macos: "14.0"
+packages:
+  - name: CoreKit
+    archetype: api-contract
+    git: { origin: git@github.com:user/CoreKit.git }
+    version: 0.1.0
+  - name: Engine
+    archetype: engine
+    git: { origin: git@github.com:user/Engine.git }
+    version: 0.1.0
+    deps: [CoreKit]
+    allowed_deps: [CoreKit]

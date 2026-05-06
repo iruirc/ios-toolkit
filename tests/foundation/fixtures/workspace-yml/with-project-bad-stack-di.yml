@@ -1,0 +1,15 @@
+workspace:
+  name: BadStackDi
+remotes: [origin]
+project:
+  name: BadDiApp
+  apps:
+    ios:
+      repo: BadDi-iOS
+      stack:
+        di: nonexistent
+packages:
+  - name: A
+    archetype: api-contract
+    git: { origin: git@github.com:user/A.git }
+    version: 0.1.0

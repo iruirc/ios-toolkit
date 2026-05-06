@@ -1,0 +1,12 @@
+workspace:
+  name: ShortForm
+remotes: [origin]
+project:
+  name: ShortApp
+  apps:
+    ios: ShortApp-iOS
+packages:
+  - name: A
+    archetype: api-contract
+    git: { origin: git@github.com:user/A.git }
+    version: 0.1.0

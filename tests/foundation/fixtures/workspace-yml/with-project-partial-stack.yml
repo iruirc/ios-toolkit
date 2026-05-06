@@ -1,0 +1,15 @@
+workspace:
+  name: Partial
+remotes: [origin]
+project:
+  name: PartialApp
+  apps:
+    ios:
+      repo: PartialApp-iOS
+      stack:
+        ui_framework: uikit
+packages:
+  - name: A
+    archetype: api-contract
+    git: { origin: git@github.com:user/A.git }
+    version: 0.1.0

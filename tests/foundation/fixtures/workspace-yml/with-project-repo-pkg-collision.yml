@@ -1,0 +1,13 @@
+workspace:
+  name: Collision
+remotes: [origin]
+project:
+  name: ColApp
+  apps:
+    ios:
+      repo: CoreKit
+packages:
+  - name: CoreKit
+    archetype: api-contract
+    git: { origin: git@github.com:user/CoreKit.git }
+    version: 0.1.0

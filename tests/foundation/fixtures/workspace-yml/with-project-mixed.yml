@@ -1,0 +1,22 @@
+workspace:
+  name: MixedProj
+remotes: [origin]
+project:
+  name: MixedApp
+  apps:
+    ios:
+      repo: MixedApp-iOS
+      stack:
+        ui_framework: uikit
+        di: swinject
+        architecture: viper
+        async: combine
+        min_platforms:
+          ios: "16.0"
+    macos:
+      repo: MixedApp-macOS
+packages:
+  - name: SharedKit
+    archetype: api-contract
+    git: { origin: git@github.com:user/SharedKit.git }
+    version: 0.1.0

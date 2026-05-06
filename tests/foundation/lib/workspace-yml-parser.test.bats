@@ -131,6 +131,69 @@ teardown() {
   [[ "$output" == *"git_author"* ]]
 }
 
+@test "validate accepts with-project-full.yml" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/with-project-full.yml)' && wsyml::validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "validate rejects bad app key (watchos)" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/with-project-bad-app-key.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"apps.watchos rejected (MVP supports ios|macos only)"* ]]
+}
+
+@test "validate rejects repo-package collision" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/with-project-repo-pkg-collision.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"repo name 'CoreKit' collides with package name 'CoreKit'"* ]]
+}
+
+@test "validate rejects bad stack.di" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/with-project-bad-stack-di.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"stack.di 'nonexistent'"* ]]
+}
+
+@test "validate rejects bad stack.min_platforms.ios (non-semver)" {
+  local tmp="$(ws_mktemp_dir)/bad-min.yml"
+  cat > "$tmp" <<'EOF'
+workspace:
+  name: BadMin
+remotes: [origin]
+project:
+  name: BadMinApp
+  apps:
+    ios:
+      repo: BadMin-iOS
+      stack:
+        min_platforms:
+          ios: vBadVersion
+packages:
+  - name: A
+    archetype: api-contract
+    git: { origin: git@github.com:user/A.git }
+    version: 0.1.0
+EOF
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$tmp' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"min_platforms.ios 'vBadVersion'"* ]]
+}
+
+@test "validate accepts with-project-shortform.yml (string-form apps.<platform>)" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/with-project-shortform.yml)' && wsyml::validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "validate accepts with-project-mixed.yml (full + empty stack mix)" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/with-project-mixed.yml)' && wsyml::validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "validate accepts with-project-partial-stack.yml (single stack field set)" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/with-project-partial-stack.yml)' && wsyml::validate"
+  [ "$status" -eq 0 ]
+}
+
 @test "wsarch::boundary_text returns text for engine" {
   run zsh -c "source '$(ws_lib_path workspace-archetypes.zsh)'; wsarch::boundary_text engine"
   [ "$status" -eq 0 ]

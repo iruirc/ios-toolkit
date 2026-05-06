@@ -1,0 +1,13 @@
+workspace:
+  name: MinimalProj
+remotes: [origin]
+project:
+  name: SimpleApp
+  apps:
+    ios:
+      repo: SimpleApp-iOS
+packages:
+  - name: CoreKit
+    archetype: api-contract
+    git: { origin: git@github.com:user/CoreKit.git }
+    version: 0.1.0

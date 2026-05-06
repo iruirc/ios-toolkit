@@ -219,6 +219,118 @@ wsyml::validate() {
     fi
   fi
 
+  # Project block validation (P-rules 1, 2, 3, 3a, 4-8)
+  local has_project
+  has_project="$(wsyml::get '.project | length' 2>/dev/null || echo 0)"
+  if (( has_project > 0 )); then
+    # P-rule 1: project.name regex
+    local proj_name
+    proj_name="$(wsyml::get '.project.name' 2>/dev/null || echo '')"
+    if [[ -z "$proj_name" ]]; then
+      print -u2 "$_path: project.name is required when project block present"
+      ((errs++))
+    elif [[ ! "$proj_name" =~ ^[A-Za-z][A-Za-z0-9-]*$ ]]; then
+      print -u2 "$_path: project.name '$proj_name' must match [A-Za-z][A-Za-z0-9-]*"
+      ((errs++))
+    fi
+
+    # P-rule 2: project.apps keys ⊆ {ios, macos} (MVP)
+    local app_keys
+    app_keys="$(wsyml::get '.project.apps | keys | .[]' 2>/dev/null || true)"
+    if [[ -z "$app_keys" ]]; then
+      print -u2 "$_path: project.apps must have at least 1 entry (ios|macos)"
+      ((errs++))
+    fi
+    local ak
+    for ak in ${(f)app_keys}; do
+      case "$ak" in
+        ios|macos) ;;
+        *)
+          print -u2 "$_path: apps.$ak rejected (MVP supports ios|macos only)"
+          ((errs++))
+          ;;
+      esac
+    done
+
+    # P-rule 3 + 3a: repo regex, uniqueness, no collision with package names.
+    # Normalize short-form (string) to long-form ({repo: <string>}) implicitly via wsyml::get.
+    local -A seen_repos
+    for ak in ${(f)app_keys}; do
+      [[ "$ak" =~ ^(ios|macos)$ ]] || continue
+      local app_repo
+      # Try long-form first (.project.apps.<key>.repo), fall back to string-form (.project.apps.<key>)
+      app_repo="$(wsyml::get ".project.apps.$ak.repo" 2>/dev/null || true)"
+      if [[ -z "$app_repo" ]]; then
+        app_repo="$(wsyml::get ".project.apps.$ak" 2>/dev/null || true)"
+        # Skip if it's not a scalar string (it would be a map without .repo, which is invalid)
+        if [[ "$app_repo" == *":"* || "$app_repo" == *"{"* ]]; then
+          print -u2 "$_path: project.apps.$ak missing .repo field"
+          ((errs++))
+          continue
+        fi
+      fi
+      if [[ -z "$app_repo" ]]; then
+        print -u2 "$_path: project.apps.$ak.repo is required"
+        ((errs++))
+        continue
+      fi
+      if [[ ! "$app_repo" =~ ^[A-Za-z][A-Za-z0-9-]*$ ]]; then
+        print -u2 "$_path: project.apps.$ak.repo '$app_repo' must match [A-Za-z][A-Za-z0-9-]*"
+        ((errs++))
+      fi
+      if (( ${+seen_repos[$app_repo]} )); then
+        print -u2 "$_path: duplicate repo name '$app_repo' in project.apps"
+        ((errs++))
+      fi
+      seen_repos[$app_repo]=1
+      # P-rule 3a: collision with package names (Foundation populates `seen` with package names in rule 3)
+      if (( ${+seen[$app_repo]} )); then
+        print -u2 "$_path: repo name '$app_repo' collides with package name '$app_repo'"
+        ((errs++))
+      fi
+    done
+
+    # P-rules 4-7: stack enum validation (per app)
+    local v mp_keys mpk mpv
+    for ak in ${(f)app_keys}; do
+      [[ "$ak" =~ ^(ios|macos)$ ]] || continue
+      # P-rule 4: ui_framework
+      v="$(wsyml::get ".project.apps.$ak.stack.ui_framework" 2>/dev/null || true)"
+      if [[ -n "$v" && ! "$v" =~ ^(swiftui|uikit|appkit)$ ]]; then
+        print -u2 "$_path: project.apps.$ak.stack.ui_framework '$v' must be swiftui|uikit|appkit"
+        ((errs++))
+      fi
+      # P-rule 5: di
+      v="$(wsyml::get ".project.apps.$ak.stack.di" 2>/dev/null || true)"
+      if [[ -n "$v" && ! "$v" =~ ^(factory|swinject|manual-factory|plain)$ ]]; then
+        print -u2 "$_path: project.apps.$ak.stack.di '$v' must be factory|swinject|manual-factory|plain"
+        ((errs++))
+      fi
+      # P-rule 6: architecture
+      v="$(wsyml::get ".project.apps.$ak.stack.architecture" 2>/dev/null || true)"
+      if [[ -n "$v" && ! "$v" =~ ^(mvvm-coordinator|mvvm|viper|clean|mvc|tca)$ ]]; then
+        print -u2 "$_path: project.apps.$ak.stack.architecture '$v' must be mvvm-coordinator|mvvm|viper|clean|mvc|tca"
+        ((errs++))
+      fi
+      # P-rule 7: async
+      v="$(wsyml::get ".project.apps.$ak.stack.async" 2>/dev/null || true)"
+      if [[ -n "$v" && ! "$v" =~ ^(async-await|combine|rxswift)$ ]]; then
+        print -u2 "$_path: project.apps.$ak.stack.async '$v' must be async-await|combine|rxswift"
+        ((errs++))
+      fi
+      # P-rule 8: min_platforms.<sub-platform> semver (M.m.p flexible: 1, 1.0, 1.0.0)
+      mp_keys="$(wsyml::get ".project.apps.$ak.stack.min_platforms | keys | .[]?" 2>/dev/null || true)"
+      for mpk in ${(f)mp_keys}; do
+        [[ -z "$mpk" ]] && continue
+        mpv="$(wsyml::get ".project.apps.$ak.stack.min_platforms.$mpk" 2>/dev/null || true)"
+        if [[ -n "$mpv" && ! "$mpv" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]]; then
+          print -u2 "$_path: project.apps.$ak.stack.min_platforms.$mpk '$mpv' must match semver M.m.p"
+          ((errs++))
+        fi
+      done
+    done
+  fi
+
   if (( errs > 0 )); then
     print -u2 "$errs error(s)."
     return 2
