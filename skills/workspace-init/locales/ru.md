@@ -76,3 +76,21 @@ Workspace-зависимости (мультивыбор):
 
 ## report_success
 Workspace готов. Дальше: открой {workspace_name}.xcworkspace
+
+## qa_project_name
+Имя project'а (используется для именования app-таргетов):
+
+## qa_app_platform
+Какая платформа? (или 'end' чтобы закончить)
+
+## qa_app_repo_name
+Имя репо для {platform} (по умолчанию {default}):
+
+## report_app_swift_init_pending
+Будут запущены /swift-init для: {apps_csv}
+
+## error_app_swift_init_failed
+swift-init упал для {app}: {details}
+
+## error_xcodegen_missing
+xcodegen не найден в PATH (нужен для генерации project'а при наличии project-блока). Установка: brew install xcodegen

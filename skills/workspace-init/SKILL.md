@@ -27,17 +27,28 @@ Always print the pre-flight summary first (using `preflight_*` locale keys):
 1. Check `command -v yq` → emit `preflight_required_yq_ok` (with `yq --version`) or `preflight_required_yq_missing`. If missing, exit 3.
 2. Check `command -v gh` → emit `preflight_optional_gh_ok` or `preflight_optional_gh_missing` (informational only).
 3. Check `command -v xcodegen` → same pattern.
+4. If `wsyml::get '.project.name'` returns non-empty (project block present): check `command -v xcodegen` → emit `error_xcodegen_missing` and exit 3 if missing. (Without project block, this check is informational only — existing Foundation behavior.)
 
 ## Interactive flow
 
 1. Ask `qa_workspace_name` (text). Validate against `[A-Za-z][A-Za-z0-9-]*` regex; reprompt on mismatch.
-2. Ask `qa_project_block` (Y/N). If Y, ask `name`, `apps.ios?` (text optional), `apps.macos?` (text optional).
+2. Ask `qa_project_block` (Y/N). If Y:
+   1. Ask `qa_project_name` (text). Validate against `[A-Za-z][A-Za-z0-9-]*`; reprompt on mismatch.
+   2. Repeat-loop:
+      - Ask `qa_app_platform` (multi-choice from {`ios`, `macos`, `end`}).
+      - If `end` → exit loop. After loop, validate ≥ 1 app declared.
+      - Otherwise ask `qa_app_repo_name` (text). Default value = `{project-name}-{platform}`. Validate against `[A-Za-z][A-Za-z0-9-]*`.
+   3. **Do NOT ask stack Q&A here.** Stack defaults are applied automatically in execution phase via swift-init's `--no-prompt` mode (see s06b).
 3. Ask `qa_groups` (Y/N). If Y, repeat-loop: ask `name` + `dir`. Empty `name` ends loop.
 4. Ask `qa_remotes` (text, comma-separated). Split + trim.
 5. Repeat-loop for packages: ask `qa_pkg_name`, `qa_pkg_archetype` (multi-choice), `group` (multi-choice from declared groups, if any), one git URL per declared remote, `qa_pkg_version`, `qa_pkg_deps` (multi-select from declared packages so far), external deps (Y/N → loop), `allowed_deps` (default = archetype rule, override Y/N), `qa_pkg_example_app`. Empty `qa_pkg_name` ends loop. Require ≥ 1 package.
 6. Ask defaults overrides (Y/N) for `default_branch`, `push_remotes`, `release_strategy`.
 7. Ask bootstrap (`qa_bootstrap_use_gh`, `qa_bootstrap_push_after_init`, `qa_bootstrap_commit_after_init`). Optional: `initial_commit_message` (default "Initial commit"), `git_author` (text, optional).
 8. Render `workspace.yml` to chat (use yq from collected values). Print `confirm_summary_header` + summary table (meta-repo dir, package count, remote count, will-commit Y/N, will-push Y/N).
+
+   When `project:` block is present, the summary additionally shows:
+   - `{N} project repos: {ios=<repo>, macos=<repo>}`
+   - `Will trigger /swift-init for: {apps_csv}` (interactive mode only — batch runs swift-init silently with `--no-prompt`)
 9. Ask `confirm_prompt` (Y/N). On N, emit `abort_no_changes`, exit 0. On Y, write `workspace.yml` to `<workspace-parent>/<workspace-name>-meta/workspace.yml` and continue to **shared execution**.
 
 ## Batch flow
@@ -57,20 +68,44 @@ Maintain `<workspace-parent>/.workspace-init.state` (newline-delimited list of c
 | s04_meta_yml | copy `workspace.yml` into meta-repo | `[[ -f workspace.yml ]]` |
 | s05_groups | mkdir each `package_groups[].dir` (or `packages/` if no groups) under workspace-parent | dir exists |
 | s06_pkg_<name> | per-package: mkdir, render `templates/workspace/package/`, recursively. Rename directory components named `PACKAGE_NAME` → `<name>`, `PACKAGE_NAMETests` → `<name>Tests`. `git init`. | dir + `.git` exist |
+| s06b_project_<app> | Invoke `swift-init`. Interactive mode → swift-init Q&A. Batch mode → `swift-init --no-prompt --platform=<key> [stack-flags]` with values from `apps.<key>.stack` or per-platform defaults (overlay). Output in `<workspace-parent>/<repo-name>/`. swift-init touches marker `.swift-init.done` in `<repo>/` on successful completion. main-target-name for downstream steps = `apps.<platform>.repo`. | `[[ -f <repo>/project.yml ]] && [[ -f <repo>/.swift-init.done ]]` |
+| s06c_project_inject_<app> | Source `wsproj::*` library. Read `wsyml::packages`. Run `wsproj::inject_deps <repo> <main-target-name>`. Run `xcodegen generate` in `<repo>/` (second xcodegen run regenerates `.xcodeproj` reflecting injected deps). | Always rerun (declarative; state file authoritative for skip — see "State file precedence" below) |
+| s06d_project_workspace_meta_<app> | Run `wsproj::append_workspace_meta <repo>` to add `## Workspace meta` section to `<repo>/CLAUDE-swift-toolkit.md`. | `grep -q '^## Workspace meta' <repo>/CLAUDE-swift-toolkit.md` |
+| s06e_project_git_<app> | `git init -b <default-branch>` in `<repo>`. | `[[ -d <repo>/.git ]]` |
 | s07_xcworkspace | copy `templates/workspace/meta-repo/xcworkspace-contents.xml.tmpl` to `<workspace-name>.xcworkspace/contents.xcworkspacedata` and fill the `WORKSPACE_PKG_REFS` marker with one `<FileRef location="group:../<group_dir_or_packages>/<name>">` per package | always overwrite (derived) |
 | s08_codeworkspace | copy `templates/workspace/meta-repo/code-workspace.json.tmpl` to `<workspace-name>.code-workspace`, then append one `{ "name": "<name>", "path": "../<group_dir_or_packages>/<name>" }` to `folders[]` per package | always overwrite |
 | s09_tasks | create `<meta-repo>/Tasks` per `tasks.symlink_mode` (regular dir, gitignored symlink, or committed symlink) | path exists |
 | s10_meta_initial_commit | iff `bootstrap.commit_after_init`: `git -c user.name=... -c user.email=... commit` | `git rev-list HEAD` non-empty |
 | s11_pkg_initial_commit_<name> | same per package | as above |
+| s11b_project_initial_commit_<app> | Iff `bootstrap.commit_after_init`: `git -C <repo> add -A && git -C <repo> commit -m <msg>`. | `git -C <repo> rev-list HEAD` non-empty |
 | s12_gh_repos | iff `use_gh`: `gh repo create` for meta + each package, register `remotes[0]` URL | `git remote get-url <remotes[0]>` succeeds |
+| s12b_gh_project_<app> | Iff `bootstrap.use_gh`: `gh repo create` for `<repo>`, register `remotes[0]` URL. | `git -C <repo> remote get-url <remotes[0]>` succeeds |
 | s13_push | iff `push_after_init`: `git push -u remotes[0] <branch>` per repo | always idempotent |
+| s13b_push_project_<app> | Iff `bootstrap.push_after_init`: `git -C <repo> push -u remotes[0] <branch>`. | always idempotent |
 | s14_local_skills | iff `generate_local_skills`: render `.claude/skills/v-*/SKILL.md` shims | per-file `[[ -f ]]` |
 
 After s14, delete `.workspace-init.state`. Emit `report_success`.
 
+### Per-app sequencing
+
+When multiple apps are declared in `project.apps` (e.g. ios + macos), execute **per-app full chain** order: `s06b_ios → s06c_ios → s06d_ios → s06e_ios → s06b_macos → s06c_macos → ...`. NOT step-major (`s06b_ios → s06b_macos → s06c_ios → ...`). Reason: failure mid-chain leaves earlier apps in fully-completed state, simplifying recovery boundaries.
+
+### State file precedence
+
+The `.workspace-init.state` file is the authoritative record of completed steps. Idempotency checks in the table act as fallback when the state file is missing (e.g. manually deleted, or workspace migrated from Foundation Cluster 1 layout where state file did not yet exist).
+
+Skip semantics:
+- Step ID present in `.workspace-init.state` → skip.
+- Step ID absent + idempotency check matches → mark as completed (write to state file) + skip.
+- Otherwise → execute, then on success write step ID to state file.
+
+State file is deleted only after `s14_local_skills` completes successfully (existing Foundation behavior).
+
 ## --resume
 
 Read `.workspace-init.state`. If absent or malformed, emit error and exit 1. Otherwise, run the shared execution table — skipping completed step IDs and verifying idempotency for the rest.
+
+For project-block workflows: interruption of swift-init Q&A (Ctrl-C during s06b interactive) leaves state file unmodified; `--resume` re-enters Q&A for the interrupted app. State file marks s06b done only after swift-init exits 0 AND `.swift-init.done` marker file exists in the project-repo.
 
 ## Templates path
 

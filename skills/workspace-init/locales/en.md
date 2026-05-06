@@ -76,3 +76,21 @@ to resume after fixing: workspace-init --resume
 
 ## report_success
 Workspace bootstrapped. Next: open {workspace_name}.xcworkspace
+
+## qa_project_name
+Project name (used for app target naming):
+
+## qa_app_platform
+Which platform? (or 'end' to stop)
+
+## qa_app_repo_name
+Repo name for {platform} (default: {default}):
+
+## report_app_swift_init_pending
+Will trigger /swift-init for: {apps_csv}
+
+## error_app_swift_init_failed
+swift-init failed for {app}: {details}
+
+## error_xcodegen_missing
+xcodegen not on PATH (required for project generation when project block is present). Install: brew install xcodegen
