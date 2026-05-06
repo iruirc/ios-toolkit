@@ -81,7 +81,9 @@ wsyml::validate() {
   local known_archs="api-contract engine library feature"
   local p g d r k pg deps git_keys arch ver allowed a
   local example_app example_platform tasks_path tasks_mode author
-  local -A seen group_set remote_set allowed_set
+  local has_project proj_name app_keys ak app_repo
+  local v mp_keys mpk mpv
+  local -A seen group_set remote_set allowed_set seen_repos
 
   # Rule 1: workspace.name required, matches [A-Za-z][A-Za-z0-9-]*
   ws_name="$(wsyml::get '.workspace.name' || true)"
@@ -220,11 +222,9 @@ wsyml::validate() {
   fi
 
   # Project block validation (P-rules 1, 2, 3, 3a, 4-8)
-  local has_project
   has_project="$(wsyml::get '.project | length' 2>/dev/null || echo 0)"
   if (( has_project > 0 )); then
     # P-rule 1: project.name regex
-    local proj_name
     proj_name="$(wsyml::get '.project.name' 2>/dev/null || echo '')"
     if [[ -z "$proj_name" ]]; then
       print -u2 "$_path: project.name is required when project block present"
@@ -235,13 +235,11 @@ wsyml::validate() {
     fi
 
     # P-rule 2: project.apps keys ⊆ {ios, macos} (MVP)
-    local app_keys
     app_keys="$(wsyml::get '.project.apps | keys | .[]' 2>/dev/null || true)"
     if [[ -z "$app_keys" ]]; then
       print -u2 "$_path: project.apps must have at least 1 entry (ios|macos)"
       ((errs++))
     fi
-    local ak
     for ak in ${(f)app_keys}; do
       case "$ak" in
         ios|macos) ;;
@@ -254,20 +252,14 @@ wsyml::validate() {
 
     # P-rule 3 + 3a: repo regex, uniqueness, no collision with package names.
     # Normalize short-form (string) to long-form ({repo: <string>}) implicitly via wsyml::get.
-    local -A seen_repos
     for ak in ${(f)app_keys}; do
       [[ "$ak" =~ ^(ios|macos)$ ]] || continue
-      local app_repo
-      # Try long-form first (.project.apps.<key>.repo), fall back to string-form (.project.apps.<key>)
+      # Try long-form first (.project.apps.<key>.repo), fall back to string-form (.project.apps.<key>).
+      # yq tsv mode returns empty string (not map literal) for non-scalar values, so empty-string
+      # guard below is sufficient — no need to detect map syntax in the string.
       app_repo="$(wsyml::get ".project.apps.$ak.repo" 2>/dev/null || true)"
       if [[ -z "$app_repo" ]]; then
         app_repo="$(wsyml::get ".project.apps.$ak" 2>/dev/null || true)"
-        # Skip if it's not a scalar string (it would be a map without .repo, which is invalid)
-        if [[ "$app_repo" == *":"* || "$app_repo" == *"{"* ]]; then
-          print -u2 "$_path: project.apps.$ak missing .repo field"
-          ((errs++))
-          continue
-        fi
       fi
       if [[ -z "$app_repo" ]]; then
         print -u2 "$_path: project.apps.$ak.repo is required"
@@ -291,7 +283,6 @@ wsyml::validate() {
     done
 
     # P-rules 4-7: stack enum validation (per app)
-    local v mp_keys mpk mpv
     for ak in ${(f)app_keys}; do
       [[ "$ak" =~ ^(ios|macos)$ ]] || continue
       # P-rule 4: ui_framework

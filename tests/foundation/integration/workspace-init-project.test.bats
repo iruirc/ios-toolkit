@@ -58,4 +58,8 @@ teardown() { ws_cleanup_tmpdirs; }
   [ -f "$parent/ShortApp-iOS/project.yml" ]
   [ -d "$parent/ShortApp-iOS/ShortApp-iOS.xcodeproj" ]
   [ -d "$parent/ShortApp-iOS/.git" ]
+  run yq eval '.packages.A.path' "$parent/ShortApp-iOS/project.yml"
+  [ "$output" = "../packages/A" ]
+  run yq eval '.targets."ShortApp-iOS".dependencies | length' "$parent/ShortApp-iOS/project.yml"
+  [ "$output" -eq 1 ]
 }

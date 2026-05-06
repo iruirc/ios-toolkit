@@ -26,8 +26,7 @@ Always print the pre-flight summary first (using `preflight_*` locale keys):
 
 1. Check `command -v yq` → emit `preflight_required_yq_ok` (with `yq --version`) or `preflight_required_yq_missing`. If missing, exit 3.
 2. Check `command -v gh` → emit `preflight_optional_gh_ok` or `preflight_optional_gh_missing` (informational only).
-3. Check `command -v xcodegen` → same pattern.
-4. If `wsyml::get '.project.name'` returns non-empty (project block present): check `command -v xcodegen` → emit `error_xcodegen_missing` and exit 3 if missing. (Without project block, this check is informational only — existing Foundation behavior.)
+3. Check `command -v xcodegen` → same pattern (informational only at pre-flight time).
 
 ## Interactive flow
 
@@ -68,7 +67,7 @@ Maintain `<workspace-parent>/.workspace-init.state` (newline-delimited list of c
 | s04_meta_yml | copy `workspace.yml` into meta-repo | `[[ -f workspace.yml ]]` |
 | s05_groups | mkdir each `package_groups[].dir` (or `packages/` if no groups) under workspace-parent | dir exists |
 | s06_pkg_<name> | per-package: mkdir, render `templates/workspace/package/`, recursively. Rename directory components named `PACKAGE_NAME` → `<name>`, `PACKAGE_NAMETests` → `<name>Tests`. `git init`. | dir + `.git` exist |
-| s06b_project_<app> | Invoke `swift-init`. Interactive mode → swift-init Q&A. Batch mode → `swift-init --no-prompt --platform=<key> [stack-flags]` with values from `apps.<key>.stack` or per-platform defaults (overlay). Output in `<workspace-parent>/<repo-name>/`. swift-init touches marker `.swift-init.done` in `<repo>/` on successful completion. main-target-name for downstream steps = `apps.<platform>.repo`. | `[[ -f <repo>/project.yml ]] && [[ -f <repo>/.swift-init.done ]]` |
+| s06b_project_<app> | **Pre-condition:** `command -v xcodegen` — emit `error_xcodegen_missing` and exit 3 if missing. Then invoke `swift-init`. Interactive mode → swift-init Q&A. Batch mode → `swift-init --no-prompt --platform=<key> [stack-flags]` with values from `apps.<key>.stack` or per-platform defaults (overlay). Output in `<workspace-parent>/<repo-name>/`. swift-init touches marker `.swift-init.done` in `<repo>/` on successful completion. main-target-name for downstream steps = `apps.<platform>.repo`. | `[[ -f <repo>/project.yml ]] && [[ -f <repo>/.swift-init.done ]]` |
 | s06c_project_inject_<app> | Source `wsproj::*` library. Read `wsyml::packages`. Run `wsproj::inject_deps <repo> <main-target-name>`. Run `xcodegen generate` in `<repo>/` (second xcodegen run regenerates `.xcodeproj` reflecting injected deps). | Always rerun (declarative; state file authoritative for skip — see "State file precedence" below) |
 | s06d_project_workspace_meta_<app> | Run `wsproj::append_workspace_meta <repo>` to add `## Workspace meta` section to `<repo>/CLAUDE-swift-toolkit.md`. | `grep -q '^## Workspace meta' <repo>/CLAUDE-swift-toolkit.md` |
 | s06e_project_git_<app> | `git init -b <default-branch>` in `<repo>`. | `[[ -d <repo>/.git ]]` |

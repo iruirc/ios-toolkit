@@ -134,6 +134,7 @@ teardown() {
 @test "validate accepts with-project-full.yml" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/with-project-full.yml)' && wsyml::validate"
   [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
 
 @test "validate rejects bad app key (watchos)" {
@@ -146,6 +147,12 @@ teardown() {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/with-project-repo-pkg-collision.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
   [[ "$output" == *"repo name 'CoreKit' collides with package name 'CoreKit'"* ]]
+}
+
+@test "validate rejects duplicate repo names across apps" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/with-project-duplicate-repos.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"duplicate repo name 'MyApp' in project.apps"* ]]
 }
 
 @test "validate rejects bad stack.di" {
@@ -182,16 +189,19 @@ EOF
 @test "validate accepts with-project-shortform.yml (string-form apps.<platform>)" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/with-project-shortform.yml)' && wsyml::validate"
   [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
 
 @test "validate accepts with-project-mixed.yml (full + empty stack mix)" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/with-project-mixed.yml)' && wsyml::validate"
   [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
 
 @test "validate accepts with-project-partial-stack.yml (single stack field set)" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/with-project-partial-stack.yml)' && wsyml::validate"
   [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
 
 @test "wsarch::boundary_text returns text for engine" {

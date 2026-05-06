@@ -86,8 +86,7 @@ if [[ -n "$proj_name" ]]; then
     "${0:A:h}/ws-project-init-driver.zsh" "$ws_yml" "$ws_parent" "$ak" "$app_repo"
   done
 
-  # Render WORKSPACE_PROJECT_REFS in xcworkspace
-  source "${0:A:h}/../../../templates/workspace/lib/workspace-doc-markers.zsh"
+  # Render WORKSPACE_PROJECT_REFS in xcworkspace (workspace-doc-markers.zsh already sourced at top)
   xcwsfile="$meta_dir/${ws_name}.xcworkspace/contents.xcworkspacedata"
   mkdir -p "$meta_dir/${ws_name}.xcworkspace"
   if [[ ! -f "$xcwsfile" ]]; then

@@ -1,0 +1,15 @@
+workspace:
+  name: DupRepos
+remotes: [origin]
+project:
+  name: DupApp
+  apps:
+    ios:
+      repo: MyApp
+    macos:
+      repo: MyApp
+packages:
+  - name: A
+    archetype: api-contract
+    git: { origin: git@github.com:user/A.git }
+    version: 0.1.0
