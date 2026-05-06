@@ -34,6 +34,8 @@ Ask the user which mode applies before generating anything:
 
 ## Mandatory Pre-Generation Dialog
 
+**If non-interactive flags are passed (see `## Non-Interactive Flags`), skip this dialog entirely or use flag values as defaults — depending on whether `--no-prompt` is set.**
+
 Before generating, gather:
 
 For apps:
@@ -47,6 +49,63 @@ For SPM packages:
 - Target platforms + minimum versions
 - `swift-tools-version`
 - Public module name(s) and purpose
+
+## Non-Interactive Flags
+
+When invoked by `workspace-init` (or any caller wanting batch behavior), the agent accepts these flags. All are optional; their presence influences whether the agent runs interactive Q&A or skips it.
+
+```
+swift-init [--no-prompt]
+           [--platform=ios|macos]
+           [--ui-framework=swiftui|uikit|appkit]
+           [--di=factory|swinject|manual-factory|plain]
+           [--architecture=mvvm-coordinator|mvvm|viper|clean|mvc|tca]
+           [--async=async-await|combine|rxswift]
+           [--min-ios=<semver>]
+           [--min-macos=<semver>]
+           [<output-dir>]
+```
+
+### Behavior
+
+- **No flags** → existing interactive Q&A unchanged.
+- **`--no-prompt` without all decision-flags** → apply per-platform defaults (selected via `--platform=` value) and proceed without Q&A. **`--platform=` is required when `--no-prompt` is set**; if absent, exit 2 with error "platform is required when --no-prompt is set".
+- **Flags present without `--no-prompt`** → flags act as Q&A defaults but Q&A still runs for missing decisions (legacy compat).
+- **Output dir** defaults to `cwd` per existing behavior.
+
+### Per-platform defaults (when `--no-prompt` set + decision-flag missing)
+
+| Field | iOS default | macOS default |
+|-------|-------------|---------------|
+| `ui_framework` | `swiftui` | `swiftui` |
+| `di` | `factory` | `factory` |
+| `architecture` | `mvvm-coordinator` | `mvvm` |
+| `async` | `async-await` | `async-await` |
+| `min_ios` | `17.0` | — |
+| `min_macos` | — | `14.0` |
+
+**Why per-platform `architecture`:** Coordinator pattern is iOS-centric (UINavigationController, UISplitViewController). On macOS, AppKit's NSWindowController-driven navigation and SwiftUI's NavigationStack/NavigationSplitView make Coordinator redundant. Default `mvvm` (without coordinator) is a more universal fit on macOS.
+
+### Example invocations
+
+Standalone interactive (existing behavior):
+```
+swift-init
+```
+
+Batch from workspace-init for an iOS app with full stack from yml:
+```
+swift-init --no-prompt --platform=ios --ui-framework=swiftui --di=factory \
+           --architecture=mvvm-coordinator --async=async-await --min-ios=17.0 \
+           ../FullApp-iOS
+```
+
+Batch from workspace-init for a macOS app with empty yml stack (all defaults):
+```
+swift-init --no-prompt --platform=macos --ui-framework=swiftui --di=factory \
+           --architecture=mvvm --async=async-await --min-macos=14.0 \
+           ../FullApp-macOS
+```
 
 ## Generated Artifacts
 
