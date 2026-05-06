@@ -69,3 +69,37 @@ for p in $(wsyml::packages); do
   done < <(find "$templates_root/package" -type f -name '*.tmpl')
   ( cd "$pkg_dir" && git init -q -b main )
 done
+
+# Detect project block
+proj_name="$(wsyml::get '.project.name' 2>/dev/null || true)"
+if [[ -n "$proj_name" ]]; then
+  # Per-app full chain: ios → macos
+  app_keys="$(wsyml::get '.project.apps | keys | .[]' 2>/dev/null || true)"
+  for ak in ${(f)app_keys}; do
+    [[ "$ak" =~ ^(ios|macos)$ ]] || continue
+    # Resolve repo name (long-form or string-form)
+    app_repo="$(wsyml::get ".project.apps.$ak.repo" 2>/dev/null || true)"
+    if [[ -z "$app_repo" ]]; then
+      app_repo="$(wsyml::get ".project.apps.$ak" 2>/dev/null || true)"
+    fi
+    [[ -z "$app_repo" ]] && continue
+    "${0:A:h}/ws-project-init-driver.zsh" "$ws_yml" "$ws_parent" "$ak" "$app_repo"
+  done
+
+  # Render WORKSPACE_PROJECT_REFS in xcworkspace
+  source "${0:A:h}/../../../templates/workspace/lib/workspace-doc-markers.zsh"
+  xcwsfile="$meta_dir/${ws_name}.xcworkspace/contents.xcworkspacedata"
+  mkdir -p "$meta_dir/${ws_name}.xcworkspace"
+  if [[ ! -f "$xcwsfile" ]]; then
+    cp "$templates_root/meta-repo/xcworkspace-contents.xml.tmpl" "$xcwsfile"
+  fi
+  proj_refs=""
+  for ak in ${(f)app_keys}; do
+    [[ "$ak" =~ ^(ios|macos)$ ]] || continue
+    app_repo="$(wsyml::get ".project.apps.$ak.repo" 2>/dev/null || true)"
+    [[ -z "$app_repo" ]] && app_repo="$(wsyml::get ".project.apps.$ak" 2>/dev/null || true)"
+    [[ -z "$app_repo" ]] && continue
+    proj_refs+="   <FileRef location=\"group:../$app_repo/$app_repo.xcodeproj\"></FileRef>"$'\n'
+  done
+  print -r -- "${proj_refs%$'\n'}" | wsmark::write "$xcwsfile" PROJECT_REFS
+fi
