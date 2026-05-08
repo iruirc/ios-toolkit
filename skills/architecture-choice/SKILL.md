@@ -1,6 +1,6 @@
 ---
 name: architecture-choice
-description: "Use at project bootstrap or major refactor to pick the iOS/macOS architecture stack. Compass-style: 5 input axes (team size, lifetime, domain complexity, UI framework, testing rigor) → one of six reference stacks (MVC / MVVM+Coordinator / MVVM+Router SwiftUI / Hybrid UIKit+SwiftUI / Clean Architecture / VIPER). Points to detailed skills, doesn't replace them."
+description: "Use at project bootstrap or major refactor to pick the iOS/macOS architecture stack. Compass-style: 5 input axes (team size, lifetime, domain complexity, UI framework, testing rigor) → one of seven reference stacks (MVC / MVVM+Coordinator / MVVM+Router SwiftUI / Hybrid UIKit+SwiftUI / Clean Architecture / VIPER / MVI). Points to detailed skills, doesn't replace them."
 ---
 
 # Architecture Choice — Decision Compass
@@ -8,7 +8,7 @@ description: "Use at project bootstrap or major refactor to pick the iOS/macOS a
 A **meta-skill** for picking a stack at day-one or at a major refactor. Doesn't teach any pattern — points to the skill that does. Use this once per project; for everything else use the skill of the chosen pattern.
 
 > **Related skills:**
-> - `arch-mvc`, `arch-mvvm`, `arch-clean`, `arch-viper`, `arch-tca` — the patterns this skill chooses between (`arch-mvc` "When Appropriate" gives the fuller MVC criteria; `arch-tca` "When Appropriate" gives the fuller TCA criteria; this matrix is a one-line summary)
+> - `arch-mvc`, `arch-mvvm`, `arch-clean`, `arch-viper`, `arch-mvi`, `arch-tca` — the patterns this skill chooses between (`arch-mvc` "When Appropriate" gives the fuller MVC criteria; `arch-tca` "When Appropriate" gives the fuller TCA criteria; this matrix is a one-line summary)
 > - `arch-coordinator`, `arch-swiftui-navigation` — orthogonal navigation skills, almost always added on top
 > - `pkg-spm-design` — when "should we modularize at all" is also being decided
 > - `di-composition-root`, `di-swinject`, `di-factory`, `di-module-assembly` — DI is a **parallel** decision, not derived from architecture
@@ -68,6 +68,7 @@ Find the row that best matches reality. Thresholds are heuristics, not boundarie
 | macOS utility / settings-style app | **MVC (AppKit) or MVVM (SwiftUI)** | Window / Sheet | AppKit MVC if heavy menu/window APIs; SwiftUI MVVM if mostly forms — pick the framework you'll write more in |
 | Multi-platform iOS + macOS, shared business logic | **Clean Architecture** | Per-platform Presentation | Domain/Data shared via SPM Library package, Presentation per platform. See `pkg-spm-design` "Library" archetype |
 | Legacy team trained on VIPER, large existing codebase | **VIPER** (modernized to async/await) | Router | Use only where the team is already fluent; otherwise pick MVVM |
+| SwiftUI or UIKit+Combine, non-trivial state machine, want unidirectional flow without TCA's learning curve | **MVI** (Pure or MVVM+Single State) | NavigationStack + Path / Coordinator | Single `State` value type, pure reducer, lighter than TCA. See `arch-mvi` |
 | SwiftUI-only, team fluent with TCA / Elm / Redux, rich state machines, exhaustive testing required | **TCA** (Point-Free Composable Architecture) | `@Presents` / `StackState` | Reducer composition + `TestStore` exhaustive tests pay off on years-long projects with complex state; non-default track — pick consciously, not "to future-proof". See `arch-tca` |
 
 **One row, not a pattern blend.** A "Clean-MVC" hybrid is almost always Massive ViewController in disguise. The Hybrid row above is the one **legitimate** mix — same patterns across two UI frameworks, not different patterns per feature.
@@ -83,6 +84,7 @@ Each stack is the set of skills you should now follow. Cross all of them off.
 - **Clean Architecture** → `arch-clean` + `arch-mvvm` (Presentation layer) + `arch-coordinator` / `arch-swiftui-navigation`; add `pkg-spm-design` if 4+ devs or multi-platform
 - **VIPER** → `arch-viper` + `arch-coordinator`
 - **TCA** → `arch-tca` (replaces both architecture and navigation: `@Presents` + `StackState` cover what `arch-swiftui-navigation` would otherwise cover); add `arch-mvvm` only if mixing TCA islands with plain SwiftUI screens elsewhere — but see `arch-tca` "Common Mistakes" #13 first
+- **MVI** → `arch-mvi` + `arch-coordinator` (UIKit) / `arch-swiftui-navigation` (SwiftUI); add `pkg-spm-design` if multi-module
 
 Cross-cutting (always, regardless of pattern):
 

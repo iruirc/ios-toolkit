@@ -27,7 +27,7 @@ The skills live flat under `skills/`, but logically split into **seven groups**.
 
 | Skill | Purpose |
 |---|---|
-| [`architecture-choice`](skills/architecture-choice/SKILL.md) | A compass: 5 axes (team / lifetime / domain complexity / UI framework / tests) → one of 9 rows in the Decision Matrix. Points to a specific `arch-*`; does not replace it. Run once per project. |
+| [`architecture-choice`](skills/architecture-choice/SKILL.md) | A compass: 5 axes (team / lifetime / domain complexity / UI framework / tests) → one of 10 rows in the Decision Matrix. Points to a specific `arch-*`; does not replace it. Run once per project. |
 
 **Run first** during bootstrap or a major refactor, if `CLAUDE-swift-toolkit.md → ## Stack` is empty.
 
@@ -39,6 +39,7 @@ The skills live flat under `skills/`, but logically split into **seven groups**.
 | [`arch-mvvm`](skills/arch-mvvm/SKILL.md) | Default for most teams. 5 binding flavors (Closures / Combine / async-await / `@Observable` / RxSwift). |
 | [`arch-viper`](skills/arch-viper/SKILL.md) | Very large teams, strict role contracts. Default Interactor — async/await. |
 | [`arch-clean`](skills/arch-clean/SKILL.md) | Complex domain, long lifetime, explicit Use Cases, layer-by-layer testability. |
+| [`arch-mvi`](skills/arch-mvi/SKILL.md) | SwiftUI or UIKit+Combine, non-trivial state machine, unidirectional without TCA. Two flavors: Pure MVI and MVVM+Single State. |
 | [`arch-tca`](skills/arch-tca/SKILL.md) | SwiftUI-only, fluent team, state machines, exhaustive testing. Replaces both architecture and navigation. |
 
 ### 2. Navigation (pick by UI framework, **independent** of architecture)

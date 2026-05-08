@@ -1,7 +1,7 @@
 {
   "name": "swift-toolkit",
-  "description": "Swift/Apple development toolkit with specialized agents for architecture, development, code review, refactoring, testing, diagnostics, security, and project initialization. Includes orchestrator skill for task workflow automation, workflow-* profile skills (FEATURE/BUG/REFACTOR/TEST/REVIEW/EPIC), task management skills (task-new, task-move, task-status), workspace-* skills for multi-package SPM workspaces (workspace-init, workspace-add, workspace-docs-regen), and slash commands (/task-new, /task-run, /task-continue, /task-redo, /task-restart, /task-move, /task-status, /workspace-init, /workspace-add, /workspace-docs-regen). Covers iOS, macOS, SPM packages, UIKit, SwiftUI, Swift Concurrency, Combine, RxSwift, Swinject DI, and architecture patterns (MVVM, VIPER, Clean Architecture, Coordinator).",
-  "version": "3.1.0",
+  "description": "Swift/Apple development toolkit with specialized agents for architecture, development, code review, refactoring, testing, diagnostics, security, and project initialization. Includes orchestrator skill for task workflow automation, workflow-* profile skills (FEATURE/BUG/REFACTOR/TEST/REVIEW/EPIC), task management skills (task-new, task-move, task-status), workspace-* skills for multi-package SPM workspaces (workspace-init, workspace-add, workspace-docs-regen), and slash commands (/task-new, /task-run, /task-continue, /task-redo, /task-restart, /task-move, /task-status, /workspace-init, /workspace-add, /workspace-docs-regen). Covers iOS, macOS, SPM packages, UIKit, SwiftUI, Swift Concurrency, Combine, RxSwift, Swinject DI, and architecture patterns (MVVM, MVI, VIPER, Clean Architecture, Coordinator).",
+  "version": "3.3.0",
   "author": {
     "name": "Dmitry Nuzhin"
   },
