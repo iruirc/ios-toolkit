@@ -50,9 +50,9 @@ The fields that directly drive this workflow's behavior:
 
 - **Analyze** — `swift-toolkit:swift-architect`. Artifact: `Research.md` describing the current state (what is bad, why, what risks the refactor carries), a map of affected components, and the target state. Goal: refactor **without changing external behavior** — only structure, readability, maintainability, type/module boundaries, naming, and dependency isolation change. The public API/behavior contract is preserved as an invariant.
 
-- **Plan** — `swift-toolkit:swift-architect`. Artifact: `Plan.md` with a phase progress table (see `State Detection` in orchestrator: statuses ✅/🔄/⬜/⏸/🚫/⊘). Each phase MUST be **independently buildable and test-passing** — that is the requirement of incremental refactoring: in case execution is interrupted, after any completed phase the project remains in a working, commit-ready state.
+- **Plan** — `swift-toolkit:swift-architect`. Artifact: `Plan.md` with a phase progress table (see `State Detection` in orchestrator: statuses ✅/🔄/⬜/⏸/🚫/⊘). Each phase MUST be **independently buildable, test-passing, AND physically committed by the Refactor stage** — that is the requirement of incremental refactoring. "Commit-ready" is NOT enough — an interrupt or rollback destroys all uncommitted work. The Refactor stage produces one git commit per green phase (see Refactor below).
 
-- **Refactor** — `swift-toolkit:swift-refactorer` (see `agents/swift-refactorer.md`). Applies the refactor phase by phase from `Plan.md`, updating the progress table after each phase. Where possible, runs local tests after each phase and locks in the progress. The stage's artifact is the changes in the source files; Refactor does not produce a dedicated `.md`. **No external behavior changes** — that invariant is verified in Validation.
+- **Refactor** — `swift-toolkit:swift-refactorer` (see `agents/swift-refactorer.md`). Applies the refactor phase by phase from `Plan.md`, updating the progress table after each phase. Where possible, runs local tests after each phase. **MUST create one git commit per green phase** — autonomously, without `AskUserQuestion`. After each phase: build → run targeted tests → update Plan.md ⬜→✅ → `git add` the phase's files (including the Plan.md update) → `git commit`. Commit message format: `<task_id>: phase <N> — <short description>` (e.g. `145/1.step/1.5a: phase 3 — facade sync impl`). If `git log` shows the project uses a different convention for similar tasks, follow that convention instead. **A phase is not "done" until it is committed.** The stage's artifact is the source-code changes + the resulting commit history; Refactor does not produce a dedicated `.md`. **No external behavior changes** — that invariant is verified in Validation.
 
   If `start_phase=<phase_id>` was passed in args — `swift-toolkit:swift-refactorer` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
 
@@ -74,7 +74,7 @@ If the host CLI does not support `AskUserQuestion`, the orchestrator uses a text
 
 No pauses between stages. Workflow-refactor runs the stages sequentially within `stage_scope` and returns the final result to the orchestrator in a single output.
 
-The only step that always requires confirmation regardless of mode is the final commit, when the orchestrator initiates the commit flow. That is again the orchestrator's responsibility, not workflow-refactor's.
+**Per-phase commits inside the Refactor stage are autonomous** — created without `AskUserQuestion`, in both manual and auto modes. The only commit that always requires confirmation regardless of mode is a flow-level wrap commit (squash, merge, push) when the orchestrator initiates one. That confirmation is the orchestrator's responsibility, not workflow-refactor's.
 
 ## 5. Output Contract
 
@@ -111,4 +111,4 @@ Based on this, the orchestrator decides: continue, abort, or ask the user.
 - Does NOT decide to skip stages — the orchestrator already passed `start_stage`, `end_stage`, `stage_scope`.
 - Does NOT create backups in `_archive/` — the orchestrator did so before handing off control; the paths are already in `archive_paths`.
 - Does NOT call `AskUserQuestion` — the orchestrator does that between stages in `manual` mode.
-- Does NOT confirm the commit with the user — the orchestrator handles that after a `next_recommended_action` return.
+- Does NOT **ask** the user before per-phase commits — workflow-refactor creates them autonomously after each green phase, no `AskUserQuestion`. The orchestrator handles user-facing commit confirmation only for any flow-level wrap commit it initiates (squash, merge, push). **"Does NOT confirm with user" means "does not interrupt to ask", NOT "does not commit".** Failing to commit per phase violates the Refactor invariant — an interrupt loses everything since the last commit, defeating the point of phase-by-phase decomposition.

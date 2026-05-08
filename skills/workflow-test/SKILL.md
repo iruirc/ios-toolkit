@@ -52,7 +52,7 @@ The fields that directly drive this workflow's behavior:
 
 - **Plan** — `swift-toolkit:swift-tester`. Artifact: `Plan.md` with a phase progress table (see `State Detection` in orchestrator: statuses ✅/🔄/⬜/⏸/🚫/⊘). The plan decomposes tests into phases — usually by groups (one phase per testable component / module / use case). Each phase is assigned a priority `P0` (critical, blocks release) / `P1` (important) / `P2` (nice-to-have).
 
-- **Write** — `swift-toolkit:swift-tester`. Implements the phases from `Plan.md` step by step, updating the progress table after each phase. Artifacts: test code in the project + test helpers/fixtures/mocks where needed. **Does NOT modify production code.** If the code under test turns out to be untestable without refactoring (tight coupling, singletons, missing protocols for mocking) — returns `{status: error, reason: refactor_required, notes: "<what specifically blocks, which component>"}` so the orchestrator/user can decide to create a separate REFACTOR task.
+- **Write** — `swift-toolkit:swift-tester`. Implements the phases from `Plan.md` step by step, updating the progress table after each phase. **MUST create one git commit per green phase** — autonomously, without `AskUserQuestion`. After each phase: build → run the newly added tests for that phase → update Plan.md ⬜→✅ → `git add` the phase's files (including the Plan.md update) → `git commit`. Commit message format: `<task_id>: phase <N> — <short description>` (e.g. `001-test: phase 2 — AuthService unit tests`). If `git log` shows the project uses a different convention for similar tasks, follow that convention instead. **A phase is not "done" until it is committed.** Artifacts: test code in the project + test helpers/fixtures/mocks where needed + the resulting commit history. **Does NOT modify production code.** If the code under test turns out to be untestable without refactoring (tight coupling, singletons, missing protocols for mocking) — returns `{status: error, reason: refactor_required, notes: "<what specifically blocks, which component>"}` so the orchestrator/user can decide to create a separate REFACTOR task.
 
   If `start_phase=<phase_id>` was passed in args — `swift-toolkit:swift-tester` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
 
@@ -74,7 +74,7 @@ If the host CLI does not support `AskUserQuestion`, the orchestrator uses a text
 
 No pauses between stages. Workflow-test runs the stages sequentially within `stage_scope` and returns the final result to the orchestrator in a single output.
 
-The only step that always requires confirmation regardless of mode is the final commit, when the orchestrator initiates the commit flow. That is again the orchestrator's responsibility, not workflow-test's.
+**Per-phase commits inside the Write stage are autonomous** — created without `AskUserQuestion`, in both manual and auto modes. The only commit that always requires confirmation regardless of mode is a flow-level wrap commit (squash, merge, push) when the orchestrator initiates one. That confirmation is the orchestrator's responsibility, not workflow-test's.
 
 ## 5. Output Contract
 
@@ -110,6 +110,6 @@ Based on this, the orchestrator decides: continue, abort, or ask the user.
 - Does NOT decide to skip stages — the orchestrator already passed `start_stage`, `end_stage`, `stage_scope`.
 - Does NOT create backups in `_archive/` — the orchestrator did so before handing off control; the paths are already in `archive_paths`.
 - Does NOT call `AskUserQuestion` — the orchestrator does that between stages in `manual` mode.
-- Does NOT confirm the commit with the user — the orchestrator handles that after a `next_recommended_action` return.
+- Does NOT **ask** the user before per-phase commits — workflow-test creates them autonomously after each green phase, no `AskUserQuestion`. The orchestrator handles user-facing commit confirmation only for any flow-level wrap commit it initiates (squash, merge, push). **"Does NOT confirm with user" means "does not interrupt to ask", NOT "does not commit".** Failing to commit per phase loses incremental progress on interrupt and forces a re-do of the whole Write stage.
 - Does NOT modify production code. If the code under test is not testable without refactoring — returns `{status: error, reason: refactor_required}`; does not patch on its own.
 - Does NOT decide on coverage metrics (coverage thresholds, target percentages) — that's the orchestrator's / user's domain; workflow-test only writes tests per the plan and records the actual coverage in `Done.md`.

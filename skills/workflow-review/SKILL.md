@@ -64,7 +64,7 @@ Workflow-review **does NOT call `AskUserQuestion` itself** — after Review it r
 
 No pauses. Auto-move runs immediately after Review per section 2, with no user confirmation. Workflow-review returns a single final result with auto-move already applied.
 
-The final commit, if the orchestrator initiates the commit flow, is confirmed with the user regardless of mode — that is the orchestrator's responsibility.
+Workflow-review has no phases — no per-phase commits. Workflow-review may commit `Review.md`, `Done.md`/`ChangesRequested.md`, `Questions.md`, and the `task-move` result autonomously without `AskUserQuestion` (these are docs-only changes, not source code). Any flow-level wrap commit the orchestrator initiates is confirmed with the user regardless of mode — that is the orchestrator's responsibility.
 
 ## 5. Output Contract
 
@@ -100,4 +100,4 @@ Field semantics:
 - Does NOT read `Task.md` to determine stack/mode — everything arrives in `args`.
 - Does NOT create backups in `_archive/` — the orchestrator did so before handing off control; the paths are already in `archive_paths`.
 - Does NOT call `AskUserQuestion` — the orchestrator does that before auto-move in `manual` mode.
-- Does NOT confirm the commit with the user — the orchestrator handles that after a `next_recommended_action` return.
+- Does NOT modify production source code — only `Review.md`, `Done.md`/`ChangesRequested.md`, `Questions.md`, and the folder move via `task-move`. Workflow-review may commit those docs-only changes autonomously without `AskUserQuestion`. The orchestrator handles user-facing commit confirmation only for any flow-level wrap commit it initiates (squash, merge, push). **"Does NOT confirm with user" means "does not interrupt to ask", NOT "does not commit".**
