@@ -8,6 +8,7 @@ description: "Use when implementing The Composable Architecture (TCA, swift-comp
 Unidirectional, reducer-based state management for SwiftUI. State is a value type, actions describe events, a pure `Reducer` returns the next state plus `Effect`s, and the `Store` glues everything together. Heavily inspired by Elm/Redux but built around Swift value types, async/await, and the SwiftUI observation system.
 
 > **Related skills:**
+> - `arch-mvi` — TCA is a specific DSL implementation of MVI; if you don't need reducer composition, exhaustive testing, or `@Dependency`, plain MVI is lighter
 > - `architecture-choice` — TCA is the non-default track for SwiftUI-only teams already fluent with reducers; choose it consciously, not by default
 > - `arch-mvvm` — MVVM is the default SwiftUI architecture; pick TCA only when the trade-offs below pay off
 > - `arch-swiftui-navigation` — TCA replaces NavigationPath/Router with `@Presents` + `StackState`; this skill covers the TCA-specific mechanics, the navigation skill covers the underlying SwiftUI primitives
@@ -853,7 +854,7 @@ await store.receive(\.searchCompleted) { $0.results = [.mock] }
 | Symptom | What to do instead |
 |---|---|
 | "Just one screen with a form" | MVVM with `@Observable` — TCA's overhead isn't worth it |
-| "We just want unidirectional flow" | MVI variant of MVVM (input → ViewModel → output state) — much lighter |
+| "We just want unidirectional flow" | Use `arch-mvi` — covers Pure MVI and MVVM+Single State variants without TCA's DSL overhead |
 | "Need DI" | TCA's `@Dependency` is for TCA reducers only; for app-wide DI use `di-composition-root` |
 | "We have UIKit screens" | TCA's UIKit story is awkward; bridge via `UIHostingController` for SwiftUI islands or stick with MVVM |
 | "Team is new to TCA" | Don't pick TCA on a deadline. The learning curve is steep and the cost of misuse is real |

@@ -9,6 +9,7 @@ Separates business logic into a testable ViewModel, keeping ViewController as a 
 
 > **Related skills:**
 > - `arch-coordinator` — extract navigation out of ViewModel/ViewController for multi-screen flows
+> - `arch-mvi` — for unidirectional flow with a single `State` value; the Input/Output Pattern below is MVI-shaped, but `arch-mvi` covers `@Observable` / Combine flavors and a Pure MVI flavor with explicit reducer
 > - `reactive-combine`, `reactive-rxswift` — binding-framework specifics (this skill compares 5 binding approaches; the framework skills cover them in depth)
 > - `di-composition-root` — where ViewModels and their dependencies are wired
 > - `di-module-assembly` — Factory pattern for assembling View+ViewModel pairs
