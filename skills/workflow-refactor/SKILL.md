@@ -50,9 +50,17 @@ The fields that directly drive this workflow's behavior:
 
 - **Analyze** — `swift-toolkit:swift-architect`. Artifact: `Research.md` describing the current state (what is bad, why, what risks the refactor carries), a map of affected components, and the target state. Goal: refactor **without changing external behavior** — only structure, readability, maintainability, type/module boundaries, naming, and dependency isolation change. The public API/behavior contract is preserved as an invariant.
 
-- **Plan** — `swift-toolkit:swift-architect`. Artifact: `Plan.md` with a phase progress table (see `State Detection` in orchestrator: statuses ✅/🔄/⬜/⏸/🚫/⊘). Each phase MUST be **independently buildable and test-passing** — that is the requirement of incremental refactoring: in case execution is interrupted, after any completed phase the project remains in a working, commit-ready state.
+- **Plan** — `swift-toolkit:swift-architect`. Artifact: `Plan.md` with **two layers of progress tracking**:
+  1. **Top-level phase progress table** (see `State Detection` in orchestrator: statuses ✅/🔄/⬜/⏸/🚫/⊘) — one row per phase, captures coarse-grained completion.
+  2. **Per-phase detail section** for each phase — actionable items rendered as **markdown checkboxes** `- [ ] <item>`. Granularity: one checkbox per file to edit, per acceptance criterion, per test to add, per verification command to run. The checkboxes MUST be granular enough that they can be ticked individually as work progresses inside the phase (the Refactor stage will tick them — see Refactor below). Static prose inside per-phase sections (rationale, rollback markers, decisions) stays as plain bullets/text — only **action items** become checkboxes.
 
-- **Refactor** — `swift-toolkit:swift-refactorer` (see `agents/swift-refactorer.md`). Applies the refactor phase by phase from `Plan.md`, updating the progress table after each phase. Where possible, runs local tests after each phase and locks in the progress. The stage's artifact is the changes in the source files; Refactor does not produce a dedicated `.md`. **No external behavior changes** — that invariant is verified in Validation.
+  Each phase MUST be **independently buildable, test-passing, AND physically committed by the Refactor stage** — that is the requirement of incremental refactoring. "Commit-ready" is NOT enough — an interrupt or rollback destroys all uncommitted work. The Refactor stage produces one git commit per green phase (see Refactor below).
+
+- **Refactor** — `swift-toolkit:swift-refactorer` (see `agents/swift-refactorer.md`). Applies the refactor phase by phase from `Plan.md`, updating both progress layers as work proceeds. Where possible, runs local tests after each phase. **MUST create one git commit per green phase** — autonomously, without `AskUserQuestion`.
+
+  Per-item flow inside a phase: complete one actionable item → tick its checkbox `- [ ]` → `- [x]` in the per-phase detail section of Plan.md. Per-phase flow: when all the phase's checkboxes are `- [x]` → build → run targeted tests → flip the phase's row in the top-level progress table ⬜→✅ → `git add` the phase's files (including the Plan.md updates — both checkboxes and table) → `git commit`. Commit message format: `<task_id>: phase <N> — <short description>` (e.g. `145/1.step/1.5a: phase 3 — facade sync impl`). If `git log` shows the project uses a different convention for similar tasks, follow that convention instead.
+
+  **A phase is not "done" (✅ in the top table) until ALL its granular checkboxes are `- [x]` AND the phase is committed.** Partial completion stays at 🔄 in the top table with the un-ticked checkboxes still `- [ ]`. The stage's artifact is the source-code changes + the resulting commit history; Refactor does not produce a dedicated `.md`. **No external behavior changes** — that invariant is verified in Validation.
 
   If `start_phase=<phase_id>` was passed in args — `swift-toolkit:swift-refactorer` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
 
@@ -74,7 +82,7 @@ If the host CLI does not support `AskUserQuestion`, the orchestrator uses a text
 
 No pauses between stages. Workflow-refactor runs the stages sequentially within `stage_scope` and returns the final result to the orchestrator in a single output.
 
-The only step that always requires confirmation regardless of mode is the final commit, when the orchestrator initiates the commit flow. That is again the orchestrator's responsibility, not workflow-refactor's.
+**Per-phase commits inside the Refactor stage are autonomous** — created without `AskUserQuestion`, in both manual and auto modes. The only commit that always requires confirmation regardless of mode is a flow-level wrap commit (squash, merge, push) when the orchestrator initiates one. That confirmation is the orchestrator's responsibility, not workflow-refactor's.
 
 ## 5. Output Contract
 
@@ -111,4 +119,4 @@ Based on this, the orchestrator decides: continue, abort, or ask the user.
 - Does NOT decide to skip stages — the orchestrator already passed `start_stage`, `end_stage`, `stage_scope`.
 - Does NOT create backups in `_archive/` — the orchestrator did so before handing off control; the paths are already in `archive_paths`.
 - Does NOT call `AskUserQuestion` — the orchestrator does that between stages in `manual` mode.
-- Does NOT confirm the commit with the user — the orchestrator handles that after a `next_recommended_action` return.
+- Does NOT **ask** the user before per-phase commits — workflow-refactor creates them autonomously after each green phase, no `AskUserQuestion`. The orchestrator handles user-facing commit confirmation only for any flow-level wrap commit it initiates (squash, merge, push). **"Does NOT confirm with user" means "does not interrupt to ask", NOT "does not commit".** Failing to commit per phase violates the Refactor invariant — an interrupt loses everything since the last commit, defeating the point of phase-by-phase decomposition.

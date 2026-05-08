@@ -52,9 +52,17 @@ The fields that directly drive this workflow's behavior:
 
 - **Diagnose** — a panel: `swift-toolkit:swift-diagnostics` + `swift-toolkit:swift-architect` (via the Task tool, in parallel or sequentially as the orchestrator decides). Artifact: `Research.md` with root cause analysis, a map of affected components, an estimate of fix scope, and the related risks.
 
-- **Plan** — `swift-toolkit:swift-architect`. Artifact: `Plan.md` with a phase progress table (see `State Detection` in orchestrator: statuses ✅/🔄/⬜/⏸/🚫/⊘). The plan covers: the focused fix, a regression test (if `need_test=true`), and migration / compatibility steps if needed.
+- **Plan** — `swift-toolkit:swift-architect`. Artifact: `Plan.md` with **two layers of progress tracking**:
+  1. **Top-level phase progress table** (see `State Detection` in orchestrator: statuses ✅/🔄/⬜/⏸/🚫/⊘) — one row per phase, coarse-grained completion.
+  2. **Per-phase detail section** for each phase — actionable items rendered as **markdown checkboxes** `- [ ] <item>`. Granularity: one checkbox per file to edit, per acceptance criterion, per regression-test case, per verification step. Granular enough to be ticked individually as the Fix stage progresses. Static prose (root-cause analysis, decisions) stays as plain bullets — only **action items** become checkboxes.
 
-- **Fix** — `swift-toolkit:swift-developer` + `swift-toolkit:swift-tester` (if `need_test=true` — for a bug, a regression test is mandatory: it locks in the scenario from `Reproduce.md` and prevents recurrence). Implements the phases from `Plan.md` step by step, updating the progress table after each phase. Artifacts: source code in the project + a regression test.
+  The plan covers: the focused fix, a regression test (if `need_test=true`), and migration / compatibility steps if needed.
+
+- **Fix** — `swift-toolkit:swift-developer` + `swift-toolkit:swift-tester` (if `need_test=true` — for a bug, a regression test is mandatory: it locks in the scenario from `Reproduce.md` and prevents recurrence). Implements the phases from `Plan.md` step by step, updating both progress layers as work proceeds. **MUST create one git commit per green phase** — autonomously, without `AskUserQuestion`.
+
+  Per-item flow inside a phase: complete one actionable item → tick its checkbox `- [ ]` → `- [x]` in the per-phase detail section of Plan.md. Per-phase flow: when all the phase's checkboxes are `- [x]` → build → run tests for the touched scope → flip the phase's row in the top-level progress table ⬜→✅ → `git add` the phase's files (including the Plan.md updates — both checkboxes and table) → `git commit`. Commit message format: `<task_id>: phase <N> — <short description>` (e.g. `bug-042: phase 1 — root-cause fix in AuthMiddleware`). If `git log` shows the project uses a different convention for similar tasks, follow that convention instead.
+
+  **A phase is not "done" (✅ in the top table) until ALL its granular checkboxes are `- [x]` AND the phase is committed.** Partial completion stays at 🔄 in the top table with the un-ticked checkboxes still `- [ ]`. Artifacts: source code in the project + a regression test + the resulting commit history.
 
   If `start_phase=<phase_id>` was passed in args — `swift-toolkit:swift-developer` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
 
@@ -76,7 +84,7 @@ If the host CLI does not support `AskUserQuestion`, the orchestrator uses a text
 
 No pauses between stages. Workflow-bug runs the stages sequentially within `stage_scope` and returns the final result to the orchestrator in a single output.
 
-The only step that always requires confirmation regardless of mode is the final commit, when the orchestrator initiates the commit flow. That is again the orchestrator's responsibility, not workflow-bug's.
+**Per-phase commits inside the Fix stage are autonomous** — created without `AskUserQuestion`, in both manual and auto modes. The only commit that always requires confirmation regardless of mode is a flow-level wrap commit (squash, merge, push) when the orchestrator initiates one. That confirmation is the orchestrator's responsibility, not workflow-bug's.
 
 ## 5. Output Contract
 
@@ -112,4 +120,4 @@ Based on this, the orchestrator decides: continue, abort, or ask the user.
 - Does NOT decide to skip stages — the orchestrator already passed `start_stage`, `end_stage`, `stage_scope`.
 - Does NOT create backups in `_archive/` — the orchestrator did so before handing off control; the paths are already in `archive_paths`.
 - Does NOT call `AskUserQuestion` — the orchestrator does that between stages in `manual` mode.
-- Does NOT confirm the commit with the user — the orchestrator handles that after a `next_recommended_action` return.
+- Does NOT **ask** the user before per-phase commits — workflow-bug creates them autonomously after each green phase, no `AskUserQuestion`. The orchestrator handles user-facing commit confirmation only for any flow-level wrap commit it initiates (squash, merge, push). **"Does NOT confirm with user" means "does not interrupt to ask", NOT "does not commit".** Failing to commit per phase loses incremental progress on interrupt; the regression test, in particular, MUST be in its own commit so it can be cherry-picked or reverted independently of the fix.

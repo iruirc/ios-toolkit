@@ -50,9 +50,17 @@ The fields that directly drive this workflow's behavior:
 
 - **Research** — a panel: `swift-toolkit:swift-architect` + `swift-toolkit:swift-security` (via the Task tool, in parallel or sequentially as the orchestrator decides). Artifact: `Research.md` in the task folder. Goal: investigate the domain, surface risks, propose architectural options.
 
-- **Plan** — `swift-toolkit:swift-architect`. Artifact: `Plan.md` with a phase progress table (see `State Detection` in orchestrator: statuses ✅/🔄/⬜/⏸/🚫/⊘). The plan decomposes the feature into concrete phases and steps.
+- **Plan** — `swift-toolkit:swift-architect`. Artifact: `Plan.md` with **two layers of progress tracking**:
+  1. **Top-level phase progress table** (see `State Detection` in orchestrator: statuses ✅/🔄/⬜/⏸/🚫/⊘) — one row per phase, coarse-grained completion.
+  2. **Per-phase detail section** for each phase — actionable items rendered as **markdown checkboxes** `- [ ] <item>`. Granularity: one checkbox per file to edit, per acceptance criterion, per test to add, per verification step. Granular enough to be ticked individually as the Execute stage progresses. Static prose (rationale, decisions, design notes) stays as plain bullets — only **action items** become checkboxes.
 
-- **Execute** — `swift-toolkit:swift-developer` + `swift-toolkit:swift-tester` (if `need_test=true` in args). Implements the phases from `Plan.md` step by step, updating the progress table after each phase. Artifacts: source code in the project + tests.
+  The plan decomposes the feature into concrete phases and steps.
+
+- **Execute** — `swift-toolkit:swift-developer` + `swift-toolkit:swift-tester` (if `need_test=true` in args). Implements the phases from `Plan.md` step by step, updating both progress layers as work proceeds. **MUST create one git commit per green phase** — autonomously, without `AskUserQuestion`.
+
+  Per-item flow inside a phase: complete one actionable item → tick its checkbox `- [ ]` → `- [x]` in the per-phase detail section of Plan.md. Per-phase flow: when all the phase's checkboxes are `- [x]` → build → run tests for the touched scope → flip the phase's row in the top-level progress table ⬜→✅ → `git add` the phase's files (including the Plan.md updates — both checkboxes and table) → `git commit`. Commit message format: `<task_id>: phase <N> — <short description>` (e.g. `001-feature: phase 2 — domain model`). If `git log` shows the project uses a different convention for similar tasks, follow that convention instead.
+
+  **A phase is not "done" (✅ in the top table) until ALL its granular checkboxes are `- [x]` AND the phase is committed.** Partial completion stays at 🔄 in the top table with the un-ticked checkboxes still `- [ ]`. Artifacts: source code in the project + tests + the resulting commit history.
 
   If `start_phase=<phase_id>` was passed in args — `swift-toolkit:swift-developer` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
 
@@ -74,7 +82,7 @@ If the host CLI does not support `AskUserQuestion`, the orchestrator uses a text
 
 No pauses between stages. Workflow-feature runs the stages sequentially within `stage_scope` and returns the final result to the orchestrator in a single output.
 
-The only step that always requires confirmation regardless of mode is the final commit, when the orchestrator initiates the commit flow. That is again the orchestrator's responsibility, not workflow-feature's.
+**Per-phase commits inside the Execute stage are autonomous** — created without `AskUserQuestion`, in both manual and auto modes. The only commit that always requires confirmation regardless of mode is a flow-level wrap commit (squash, merge, push) when the orchestrator initiates one. That confirmation is the orchestrator's responsibility, not workflow-feature's.
 
 ## 5. Output Contract
 
@@ -110,4 +118,4 @@ Based on this, the orchestrator decides: continue, abort, or ask the user.
 - Does NOT decide to skip stages — the orchestrator already passed `start_stage`, `end_stage`, `stage_scope`.
 - Does NOT create backups in `_archive/` — the orchestrator did so before handing off control; the paths are already in `archive_paths`.
 - Does NOT call `AskUserQuestion` — the orchestrator does that between stages in `manual` mode.
-- Does NOT confirm the commit with the user — the orchestrator handles that after a `next_recommended_action` return.
+- Does NOT **ask** the user before per-phase commits — workflow-feature creates them autonomously after each green phase, no `AskUserQuestion`. The orchestrator handles user-facing commit confirmation only for any flow-level wrap commit it initiates (squash, merge, push). **"Does NOT confirm with user" means "does not interrupt to ask", NOT "does not commit".** Failing to commit per phase loses incremental progress on interrupt and forces a re-do of the whole Execute stage.

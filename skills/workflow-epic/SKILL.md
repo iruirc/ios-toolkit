@@ -58,7 +58,7 @@ Key fields and their EPIC-specific semantics:
   - Artifact: `Plan.md` with a progress table of **`.step/` subfolders** (not phases inside a single profile).
   - Each step is described as a separate task: it has its own `[TASK_TYPE]` (FEATURE/BUG/REFACTOR/TEST/EPIC — yes, recursive EPIC is allowed), its own `[STATUS]` ∈ {TODO, ACTIVE, DONE, DEFERRED, BLOCKED, SKIPPED}, an optional `[WORKFLOW_MODE]`, and its own `## 4. [Stack]` (or inherits from the epic).
   - Step folders are created physically: `Tasks/<STATUS>/<epic-id>-<slug>/1.step/`, `2.step/`, …, `composition-model.step/` (any name with the `.step` suffix). Each contains its own `Task.md`. Creating the physical folders is the responsibility of `swift-toolkit:task-new` (see section 6).
-  - The progress table in Plan.md lists steps in execution order with columns: `step_id | TASK_TYPE | [STATUS] | short description | artifact`.
+  - The progress table in Plan.md lists steps in execution order with columns: `Done? | step_id | TASK_TYPE | [STATUS] | short description | artifact`. The **`Done?` column renders as a markdown checkbox** `- [ ]` / `- [x]` mirroring the step's `[STATUS]`: `[x]` when `[STATUS]=DONE`, `[ ]` otherwise. Workflow-epic ticks the checkbox at the moment a step's inner workflow completes (i.e. when `task-move` relocates the step to `DONE/`).
 
   **Branch B — Pure research.**
   - Artifact: `Research.md` is extended/finalized. `Plan.md` is optional, written as a "research roadmap" (what else needs investigation, no decomposition into executable steps).
@@ -67,6 +67,8 @@ Key fields and their EPIC-specific semantics:
   The branch decision is made based on `Research.md` and recorded inside it under an H2 heading. **CRITICAL — DO NOT TRANSLATE THE HEADING.** The heading is the byte-for-byte literal `## Decomposition decision`, written exactly that way regardless of the active language. Do not translate, localize, or adapt it — workflow-epic later parses this exact string to know which branch to take; translating it silently breaks the EPIC profile. The free-form prose under the heading IS composed by the architect agent in the user's natural language. Workflow-epic reads this section and acts accordingly — **it does not pick the branch on its own** (see section 6).
 
 - **Execute** (only on branch A — Decomposition). Walks the `.step/` subfolders sequentially — by prefix order (`1.step` → `2.step` → … for numeric prefixes; for named ones — in the order locked in `Plan.md`). **Steps are NOT run in parallel** — strictly sequential, for predictability and clean state recovery.
+
+  **Per-step commits.** Workflow-epic itself does NOT create commits at the epic level. Each step's inner workflow-* (refactor/feature/bug/test) is responsible for its own per-phase commits, autonomously, without `AskUserQuestion`. Workflow-epic only ensures the inner workflow runs to completion; the commit history is built up step by step by the inner workflows.
 
   For each step:
   - Read `<step>/Task.md`, extract `[STATUS]` and `[TASK_TYPE]`.
@@ -106,7 +108,7 @@ In push mode, pauses between the inner stages of a step are the responsibility o
 
 ## 4. Auto mode
 
-No pauses. Steps in Execute run sequentially one after another; the only interruption is when a step returns `status=error` or `status=cancelled`. The final commit, when the orchestrator initiates the commit flow after Done, is always confirmed with the user (that is the orchestrator's responsibility, not workflow-epic's).
+No pauses. Steps in Execute run sequentially one after another; the only interruption is when a step returns `status=error` or `status=cancelled`. Per-step commits are created autonomously by each step's inner workflow-* (no user prompt). The only commit that always requires confirmation regardless of mode is a flow-level wrap commit (squash, merge, push) the orchestrator may initiate after Done — that confirmation is the orchestrator's responsibility, not workflow-epic's.
 
 ## 5. Output Contract (extended)
 
@@ -156,4 +158,4 @@ Based on this, the orchestrator decides: continue, abort, ask the user, or dispa
 - Does NOT dispatch steps in parallel — only sequentially (for predictability and clean resume).
 - Does NOT create backups in `_archive/` — the orchestrator did so before handing off control; the paths are already in `archive_paths`.
 - Does NOT call `AskUserQuestion` — the orchestrator does that between stages and between steps in `manual` mode.
-- Does NOT confirm the commit with the user — the orchestrator handles that after a `next_recommended_action` return.
+- Does NOT create commits at the epic level — per-phase commits are the responsibility of each step's inner workflow-* (created autonomously without `AskUserQuestion`). The orchestrator handles user-facing commit confirmation only for any flow-level wrap commit it initiates after Done (squash, merge, push). **"Does NOT confirm with user" means "does not interrupt to ask"; the inner step workflows still commit per phase.**
