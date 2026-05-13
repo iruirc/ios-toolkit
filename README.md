@@ -72,14 +72,23 @@ The skills live flat under `skills/`, but logically split into **seven groups**.
 | [`persistence-migrations`](skills/persistence-migrations/SKILL.md) | Schema migrations (CD lightweight/heavyweight, SwiftData VersionedSchema, GRDB DatabaseMigrator, Realm migrationBlock), Codable evolution, backup, telemetry. |
 | [`concurrency-architecture`](skills/concurrency-architecture/SKILL.md) | Placement of Swift Concurrency across layers: where `@MainActor` lives, when to use a custom `actor`, who owns a `Task`, how cancellation propagates between layers, where `async let` / `TaskGroup` belong. An architectural concern; language-level questions (Sendable, Swift 6 migration) belong to the external `swift-concurrency:swift-concurrency` skill (AvdLee). |
 
-### 5. Binding tools — **not architectures**, just tools used inside them
+### 5. Feature design & estimation (process skills used in Research / Plan / Validation)
+
+| Skill | Purpose |
+|---|---|
+| [`feature-requirements`](skills/feature-requirements/SKILL.md) | Extract Primary vs Secondary requirements from a briefing, compile designer / backend questions, list known unknowns. Produces `## Requirements` in `Research.md`. |
+| [`feature-landscape`](skills/feature-landscape/SKILL.md) | Entity graph + layer map + integration points + work-items decomposition (≤2 days each), with the Holistic-Driven Development sequence. Produces `## Landscape` in `Research.md` and seeds per-phase action items in `Plan.md`. |
+| [`feature-estimation`](skills/feature-estimation/SKILL.md) | Convert work-items into a calibrated day range using static mobile multipliers (unknowns, secondary, parallel API, binary distribution, App Store review). Produces `## Estimation` in `Plan.md`. Always a range, never a point. |
+| [`mobile-ops-checklist`](skills/mobile-ops-checklist/SKILL.md) | Cross-cutting validation checklist (14 categories: release, state, networking, offline, crash, perf, push, deeplinks, a11y, i18n, analytics, privacy, migrations, testing, 3p SDK, CI/CD). Each item Applicable (with evidence) / N/A (with reason) / Pending. Produces a separate `OpsChecklist.md` artifact. |
+
+### 6. Binding tools — **not architectures**, just tools used inside them
 
 | Skill | Purpose |
 |---|---|
 | [`reactive-combine`](skills/reactive-combine/SKILL.md) | Combine as an event-stream / UI-binding tool. The architecture is chosen separately (`arch-mvvm` / `arch-clean` / `arch-tca`). |
 | [`reactive-rxswift`](skills/reactive-rxswift/SKILL.md) | RxSwift as an event-stream / UI-binding tool. The architecture is chosen separately (`arch-mvvm` / `arch-clean` / `arch-viper`). |
 
-### 6. Task orchestration (the toolkit's internal "kitchen")
+### 7. Task orchestration (the toolkit's internal "kitchen")
 
 | Skill | Purpose |
 |---|---|
