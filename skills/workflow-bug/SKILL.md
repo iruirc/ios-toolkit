@@ -50,6 +50,8 @@ The fields that directly drive this workflow's behavior:
 
 - **Reproduce** — `swift-toolkit:swift-diagnostics`. Artifact: `Reproduce.md` (or a section in `Research.md`) with reproduction steps, a minimal reproducer, and the manifestation frequency (always / sometimes / under condition X). Goal: pin down a deterministic scenario that Validation can later rely on.
 
+  Apply the `feature-requirements` skill (Secondary checklist only) to enumerate which Secondary states the bug touches — error / loading / empty / offline / a11y / deeplink / push / i18n / analytics / lifecycle / cancellation. A bug often hides not in the happy path but in one of these states; explicit enumeration prevents "fixed the happy path, broke offline" regressions.
+
 - **Diagnose** — a panel: `swift-toolkit:swift-diagnostics` + `swift-toolkit:swift-architect` (via the Task tool, in parallel or sequentially as the orchestrator decides). Artifact: `Research.md` with root cause analysis, a map of affected components, an estimate of fix scope, and the related risks.
 
 - **Plan** — `swift-toolkit:swift-architect`. Artifact: `Plan.md` with **two layers of progress tracking**:
@@ -67,6 +69,8 @@ The fields that directly drive this workflow's behavior:
   If `start_phase=<phase_id>` was passed in args — `swift-toolkit:swift-developer` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
 
 - **Validation** — `swift-toolkit:swift-validator`. Artifact: `Validation.md`, **first line is required** to be `[VALIDATION_STATUS] = PASSED | FAILED | FLAKY` (the shared contract between `swift-validator`, every `workflow-*`, and the orchestrator; analogous to `[REVIEW_STATUS]`). For the BUG profile, the validator runs XcodeBuildMCP `build_sim` + `test_sim` mandatorily AND mobile MCP mandatorily (regardless of layer) to replay the reproduction scenario from `Reproduce.md`. Validation is not considered PASSED without an explicit agent-composed statement that the bug no longer reproduces — surfaced in the return digest as `reproduction_status: fixed`. Detailed behavior (replay procedure, return-digest format) lives in `agents/swift-validator.md`.
+
+  The validator MUST apply the `mobile-ops-checklist` skill, scoped to the categories the bug touched (per `Reproduce.md`'s Secondary enumeration). Output: `OpsChecklist.md` in the task folder, marking only the touched categories — full-checklist coverage is not required for BUG. Goal: catch regressions in adjacent ops behaviors (e.g. a fix for a network bug must not break the offline / cancellation behavior).
 
 - **Review** — `swift-toolkit:swift-reviewer` (if `need_review=true` in args). Artifact: `Review.md`, **first line is required** to be `[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION` (this field is the shared contract between workflow-* and the orchestrator; it is also used by `swift-toolkit:workflow-review` for auto-move into DONE/).
 
