@@ -95,6 +95,10 @@ Consult the appropriate skill based on the architecture in use:
 - `di-composition-root` — Composition Root design, bootstrap strategies, scope management; manual / Swinject / Factory comparison table
 - `di-module-assembly` — Factory pattern, Assembly, non-UI factories, late initialization (architecture pattern, works over any DI)
 - `pkg-spm-design` — designing package boundaries (Feature / Library / API / Engine archetypes)
+- `feature-requirements` — Research-stage skill: extracts Primary vs Secondary requirements, compiles designer/backend questions, lists known unknowns; produces the `## Requirements` section in Research.md
+- `feature-landscape` — Research-stage skill: entity graph + layer map + integration points + work-items decomposition; produces the `## Landscape` section in Research.md; the work-items list seeds Plan.md per-phase action items
+- `feature-estimation` — Plan-stage skill: converts work-items into a calibrated day range via static mobile multipliers (unknowns, secondary, parallel API, binary distribution, App Store review); produces the `## Estimation` section in Plan.md
+- `mobile-ops-checklist` — produced by swift-validator as a separate `OpsChecklist.md` artifact; the architect should be aware of which checklist items will need to be Applicable for the proposed design so feature flag, analytics, deep link, offline behavior, etc. are explicit in `## Proposed Design`, not afterthoughts at Validation
 - `task-new`, `task-move` — task lifecycle management
 
 ## Related Agents (swift-toolkit)

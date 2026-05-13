@@ -224,6 +224,9 @@ The caller (orchestrator) treats your return as authoritative — never embellis
 - `error-architecture` — to recognize the difference between a domain error surfacing correctly (PASSED with expected error path) and an unexpected error leaking (FAILED).
 - `persistence-migrations` — when a test failure looks migration-related (Core Data / SwiftData / GRDB schema mismatch), note that in the failure entry.
 - `net-architecture` — when a test failure points at networking layer behavior (timeouts, retry, decoding).
+- `mobile-ops-checklist` — the cross-cutting checklist you produce as `OpsChecklist.md` in the task folder. Mark each item Applicable (with concrete evidence: file path, test name, commit ref), N/A (with reason), or Pending. **Pending is NOT itself a FAILED verdict** — Pending items are surfaced to the Review stage for explicit user accept/defer.
+- `feature-landscape` — for the REFACTOR profile, the `## Landscape (current)` vs `## Landscape (target)` sections in Research.md tell you what behavior MUST stay identical and what is allowed to change structurally. A regression against the current landscape is a finding — note it in `Failures`.
+- `feature-requirements` — for the BUG profile, the Secondary table in Reproduce.md / Research.md scopes which `mobile-ops-checklist` categories you re-verify. BUG validation does not require full-checklist coverage — only the categories the bug touched.
 
 These are for **classification of observed failures only** — never to propose fixes.
 
