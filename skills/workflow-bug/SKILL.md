@@ -66,7 +66,7 @@ The fields that directly drive this workflow's behavior:
 
   If `start_phase=<phase_id>` was passed in args — `swift-toolkit:swift-developer` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
 
-- **Validation** — XcodeBuildMCP (`build_sim`, `test_sim`) + mobile MCP **mandatory**: verify the fix on a real simulator/device by replaying the reproduction scenario from `Reproduce.md`. Validation is not considered passed without an explicit agent-composed statement that the bug no longer reproduces (free-form content written into `Validation.md` in the user's language; not a template). Artifact: `Validation.md` with the build/test log, the replay of the reproduction scenario, and the final verdict.
+- **Validation** — `swift-toolkit:swift-validator`. Artifact: `Validation.md`, **first line is required** to be `[VALIDATION_STATUS] = PASSED | FAILED | FLAKY` (the shared contract between `swift-validator`, every `workflow-*`, and the orchestrator; analogous to `[REVIEW_STATUS]`). For the BUG profile, the validator runs XcodeBuildMCP `build_sim` + `test_sim` mandatorily AND mobile MCP mandatorily (regardless of layer) to replay the reproduction scenario from `Reproduce.md`. Validation is not considered PASSED without an explicit agent-composed statement that the bug no longer reproduces — surfaced in the return digest as `reproduction_status: fixed`. Detailed behavior (replay procedure, return-digest format) lives in `agents/swift-validator.md`.
 
 - **Review** — `swift-toolkit:swift-reviewer` (if `need_review=true` in args). Artifact: `Review.md`, **first line is required** to be `[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION` (this field is the shared contract between workflow-* and the orchestrator; it is also used by `swift-toolkit:workflow-review` for auto-move into DONE/).
 
@@ -107,7 +107,7 @@ Field semantics:
 - `status=interrupted` — execution was interrupted by a technical fault or external signal (not by user decision): subagent disconnect, timeout, tool unavailable. Requires diagnostics on the orchestrator side.
 - `last_completed_stage` — the last stage that actually finished (not the one execution stopped on with an error).
 - `artifact_path` — path to the key artifact of the last stage (`Reproduce.md`, `Research.md`, `Plan.md`, `Validation.md`, `Review.md`, `Done.md`).
-- `next_recommended_action=continue` — the next stage may start immediately; `stop` — natural finish (Done) or a fatal error; `ask_user` — confirmation is needed before continuing (e.g. after a Review with `CHANGES_REQUESTED`).
+- `next_recommended_action=continue` — the next stage may start immediately; `stop` — natural finish (Done) or a fatal error; `ask_user` — confirmation is needed before continuing (e.g. after a Validation with `[VALIDATION_STATUS] = FAILED | FLAKY`, or after a Review with `[REVIEW_STATUS] = CHANGES_REQUESTED`).
 - `notes` — short free-form description (e.g. the example in locale key `notes_build_failed_example`).
 
 Based on this, the orchestrator decides: continue, abort, or ask the user.

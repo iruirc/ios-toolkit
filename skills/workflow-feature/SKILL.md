@@ -64,7 +64,7 @@ The fields that directly drive this workflow's behavior:
 
   If `start_phase=<phase_id>` was passed in args — `swift-toolkit:swift-developer` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
 
-- **Validation** — XcodeBuildMCP (`build_sim`, `test_sim`) + optionally mobile MCP (E2E key-path scenario; mandatory when there is a UI layer — SwiftUI/UIKit views, screens, navigation; skipped for purely domain/infrastructure features). Verifies the feature builds and passes tests. Artifact: `Validation.md` with the log and the verdict.
+- **Validation** — `swift-toolkit:swift-validator`. Artifact: `Validation.md`, **first line is required** to be `[VALIDATION_STATUS] = PASSED | FAILED | FLAKY` (the shared contract between `swift-validator`, every `workflow-*`, and the orchestrator; analogous to `[REVIEW_STATUS]`). For the FEATURE profile, the validator runs XcodeBuildMCP `build_sim` + `test_sim` mandatorily, and mobile MCP mandatorily when there is a UI layer (SwiftUI/UIKit views, screens, navigation); mobile MCP is skipped for purely domain/infrastructure features. Detailed per-profile behavior (mandatory vs. optional MCP steps, log capture, return-digest format) lives in `agents/swift-validator.md`.
 
 - **Review** — `swift-toolkit:swift-reviewer` (if `need_review=true` in args). Artifact: `Review.md`, **first line is required** to be `[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION` (this field is the shared contract between workflow-* and the orchestrator; it is also used by `swift-toolkit:workflow-review` for auto-move into DONE/).
 
@@ -105,7 +105,7 @@ Field semantics:
 - `status=interrupted` — execution was interrupted by a technical fault or external signal (not by user decision): subagent disconnect, timeout, tool unavailable. Requires diagnostics on the orchestrator side.
 - `last_completed_stage` — the last stage that actually finished (not the one execution stopped on with an error).
 - `artifact_path` — path to the key artifact of the last stage (`Research.md`, `Plan.md`, `Validation.md`, `Review.md`, `Done.md`).
-- `next_recommended_action=continue` — the next stage may start immediately; `stop` — natural finish (Done) or a fatal error; `ask_user` — confirmation is needed before continuing (e.g. after a Review with `CHANGES_REQUESTED`).
+- `next_recommended_action=continue` — the next stage may start immediately; `stop` — natural finish (Done) or a fatal error; `ask_user` — confirmation is needed before continuing (e.g. after a Validation with `[VALIDATION_STATUS] = FAILED | FLAKY`, or after a Review with `[REVIEW_STATUS] = CHANGES_REQUESTED`).
 - `notes` — short free-form description (e.g. the example in locale key `notes_build_failed_example`).
 
 Based on this, the orchestrator decides: continue, abort, or ask the user.
