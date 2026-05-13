@@ -279,6 +279,10 @@ Consult these skills when reviewing code against architectural / framework expec
 - `di-composition-root` — what belongs in CR vs not, bootstrap correctness, scope leaks
 - `di-module-assembly` — Factory pattern, protocol seams, late initialization patterns (architecture pattern, works over any DI)
 - `pkg-spm-design` — package boundary violations (DI-framework leaks, public-surface bloat, archetype mismatch)
+- `mobile-ops-checklist` — cross-check every Applicable item in `OpsChecklist.md` (produced by swift-validator) against the diff. Verification evidence must be visible: file path, test name, commit ref, or screenshot reference. Applicable items without evidence = finding (severity per `## Severity Levels`), typically `CHANGES_REQUESTED`. Pending items surface as a `## Outstanding ops items` section in Review.md for explicit user accept/defer.
+- `feature-requirements` — verify the Secondary table in Research.md was actually handled in code. Every Applicable Secondary state needs corresponding implementation in the diff: loading state, error state, empty state, offline behavior, accessibility labels, analytics events, deep link entry, etc. Missing Applicable Secondary = finding.
+- `feature-landscape` — verify the implementation matches the entity graph + layer map + integration points from Research.md `## Landscape`. Implementation drift = finding: wrong layer hosts business logic, integration-point contract violated, undocumented cross-layer coupling, work item declared done but acceptance criterion not met.
+- `feature-estimation` — sanity-check actual implementation against the range in Plan.md `## Estimation`. Significant overrun (>50% above high end) without a documented reason in commits = surface as `## Estimate retrospective` in Review.md for follow-up; not itself a finding.
 - `task-new`, `task-move` — task lifecycle management (used in Follow-up suggestions)
 
 ## Related Agents (swift-toolkit)

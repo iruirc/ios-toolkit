@@ -50,11 +50,15 @@ The fields that directly drive this workflow's behavior:
 
 - **Research** — a panel: `swift-toolkit:swift-architect` + `swift-toolkit:swift-security` (via the Task tool, in parallel or sequentially as the orchestrator decides). Artifact: `Research.md` in the task folder. Goal: investigate the domain, surface risks, propose architectural options.
 
+  The architect MUST apply the `feature-requirements` skill and then the `feature-landscape` skill, producing two H2 sections inside `Research.md`: `## Requirements` (Primary / Secondary / Designer questions / Backend questions / Known unknowns) and `## Landscape` (Entity graph / Layer map / Integration points / Work items / Implementation sequence). The `## Architectural Analysis` and other architect-output sections are appended after these two.
+
 - **Plan** — `swift-toolkit:swift-architect`. Artifact: `Plan.md` with **two layers of progress tracking**:
   1. **Top-level phase progress table** (see `State Detection` in orchestrator: statuses ✅/🔄/⬜/⏸/🚫/⊘) — one row per phase, coarse-grained completion.
   2. **Per-phase detail section** for each phase — actionable items rendered as **markdown checkboxes** `- [ ] <item>`. Granularity: one checkbox per file to edit, per acceptance criterion, per test to add, per verification step. Granular enough to be ticked individually as the Execute stage progresses. Static prose (rationale, decisions, design notes) stays as plain bullets — only **action items** become checkboxes.
 
-  The plan decomposes the feature into concrete phases and steps.
+  The plan decomposes the feature into concrete phases and steps. Per-phase action items are seeded from the work-items list in `Research.md ## Landscape ### Work items`.
+
+  The architect MUST apply the `feature-estimation` skill to produce an additional `## Estimation` section in `Plan.md` (baseline table + applied multipliers + range + assumptions + known unknowns). The estimation range is a hard-prerequisite for entering Execute — if Known Unknowns are still blocking, Plan stays open and the workflow returns `ask_user`.
 
 - **Execute** — `swift-toolkit:swift-developer` + `swift-toolkit:swift-tester` (if `need_test=true` in args). Implements the phases from `Plan.md` step by step, updating both progress layers as work proceeds. **MUST create one git commit per green phase** — autonomously, without `AskUserQuestion`.
 
@@ -64,9 +68,13 @@ The fields that directly drive this workflow's behavior:
 
   If `start_phase=<phase_id>` was passed in args — `swift-toolkit:swift-developer` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
 
-- **Validation** — XcodeBuildMCP (`build_sim`, `test_sim`) + optionally mobile MCP (E2E key-path scenario; mandatory when there is a UI layer — SwiftUI/UIKit views, screens, navigation; skipped for purely domain/infrastructure features). Verifies the feature builds and passes tests. Artifact: `Validation.md` with the log and the verdict.
+- **Validation** — `swift-toolkit:swift-validator`. Artifact: `Validation.md`, **first line is required** to be `[VALIDATION_STATUS] = PASSED | FAILED | FLAKY` (the shared contract between `swift-validator`, every `workflow-*`, and the orchestrator; analogous to `[REVIEW_STATUS]`). For the FEATURE profile, the validator runs XcodeBuildMCP `build_sim` + `test_sim` mandatorily, and mobile MCP mandatorily when there is a UI layer (SwiftUI/UIKit views, screens, navigation); mobile MCP is skipped for purely domain/infrastructure features. Detailed per-profile behavior (mandatory vs. optional MCP steps, log capture, return-digest format) lives in `agents/swift-validator.md`.
+
+  In addition to `Validation.md`, the validator MUST produce a separate `OpsChecklist.md` artifact in the task folder by applying the `mobile-ops-checklist` skill. Each checklist item is marked **Applicable** (with verification evidence: file path, test name, commit ref), **N/A** (with reason), or **Pending**. A single Pending item is NOT itself a FAILED verdict — Pending items are surfaced to the Review stage, which decides whether they block APPROVED.
 
 - **Review** — `swift-toolkit:swift-reviewer` (if `need_review=true` in args). Artifact: `Review.md`, **first line is required** to be `[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION` (this field is the shared contract between workflow-* and the orchestrator; it is also used by `swift-toolkit:workflow-review` for auto-move into DONE/).
+
+  The reviewer cross-checks `OpsChecklist.md` from the Validation stage: every item marked **Applicable** must have implementation evidence visible in the diff or in test results. Applicable items without evidence are findings (severity per `swift-reviewer.md`) and typically yield `CHANGES_REQUESTED`. Pending items in `OpsChecklist.md` are surfaced as a `## Outstanding ops items` section in `Review.md` for explicit user-side accept/defer.
 
 - **Done** — final report `Done.md`: what was done, which artifacts were produced, validation status (build/test result), and objections (if the user insisted on a contested decision).
 
@@ -105,7 +113,7 @@ Field semantics:
 - `status=interrupted` — execution was interrupted by a technical fault or external signal (not by user decision): subagent disconnect, timeout, tool unavailable. Requires diagnostics on the orchestrator side.
 - `last_completed_stage` — the last stage that actually finished (not the one execution stopped on with an error).
 - `artifact_path` — path to the key artifact of the last stage (`Research.md`, `Plan.md`, `Validation.md`, `Review.md`, `Done.md`).
-- `next_recommended_action=continue` — the next stage may start immediately; `stop` — natural finish (Done) or a fatal error; `ask_user` — confirmation is needed before continuing (e.g. after a Review with `CHANGES_REQUESTED`).
+- `next_recommended_action=continue` — the next stage may start immediately; `stop` — natural finish (Done) or a fatal error; `ask_user` — confirmation is needed before continuing (e.g. after a Validation with `[VALIDATION_STATUS] = FAILED | FLAKY`, or after a Review with `[REVIEW_STATUS] = CHANGES_REQUESTED`).
 - `notes` — short free-form description (e.g. the example in locale key `notes_build_failed_example`).
 
 Based on this, the orchestrator decides: continue, abort, or ask the user.

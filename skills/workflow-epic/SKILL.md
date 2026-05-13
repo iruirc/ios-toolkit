@@ -52,10 +52,15 @@ Key fields and their EPIC-specific semantics:
 
 - **Research** — `swift-toolkit:swift-architect`. Artifact: `Research.md` in the epic's folder. Goal: a wide investigation of the topic (context, actors, constraints, technology options, related modules). The Research output must answer: **is decomposition required** (a large initiative needs to be split into executable chunks) **or is pure research enough** (Research.md is itself the final artifact; no implementation will follow).
 
+  For the **decomposition** branch, the architect MUST apply `feature-requirements` (epic-level Primary / Secondary / Designer / Backend / Known Unknowns) and `feature-landscape` (epic-level entity graph + layer map + integration points). `Research.md` gets `## Requirements` and `## Landscape` sections. The landscape's work-items list seeds the step decomposition in the next stage.
+
+  For the **pure_research** branch, these sections are optional but recommended where applicable (e.g. a pure-research task investigating a feasibility question still benefits from a Requirements section to scope the inquiry).
+
 - **Plan** — `swift-toolkit:swift-architect`. **Two branches:**
 
   **Branch A — Decomposition.**
   - Artifact: `Plan.md` with a progress table of **`.step/` subfolders** (not phases inside a single profile).
+  - The step decomposition is seeded from `Research.md ## Landscape ### Work items`. Steps group related work items along layer or feature boundaries — typically one step per major layer (Domain / Repository / Networking / UI) or per self-contained sub-feature. The architect MAY also apply `feature-estimation` at the epic level to compute a per-step day range, written into `Plan.md ## Estimation` (optional for EPIC).
   - Each step is described as a separate task: it has its own `[TASK_TYPE]` (FEATURE/BUG/REFACTOR/TEST/EPIC — yes, recursive EPIC is allowed), its own `[STATUS]` ∈ {TODO, ACTIVE, DONE, DEFERRED, BLOCKED, SKIPPED}, an optional `[WORKFLOW_MODE]`, and its own `## 4. [Stack]` (or inherits from the epic).
   - Step folders are created physically: `Tasks/<STATUS>/<epic-id>-<slug>/1.step/`, `2.step/`, …, `composition-model.step/` (any name with the `.step` suffix). Each contains its own `Task.md`. Creating the physical folders is the responsibility of `swift-toolkit:task-new` (see section 6).
   - The progress table in Plan.md lists steps in execution order with columns: `Done? | step_id | TASK_TYPE | [STATUS] | short description | artifact`. The **`Done?` column renders as a markdown checkbox** `- [ ]` / `- [x]` mirroring the step's `[STATUS]`: `[x]` when `[STATUS]=DONE`, `[ ]` otherwise. Workflow-epic ticks the checkbox at the moment a step's inner workflow completes (i.e. when `task-move` relocates the step to `DONE/`).

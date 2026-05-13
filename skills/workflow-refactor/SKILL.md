@@ -50,6 +50,8 @@ The fields that directly drive this workflow's behavior:
 
 - **Analyze** — `swift-toolkit:swift-architect`. Artifact: `Research.md` describing the current state (what is bad, why, what risks the refactor carries), a map of affected components, and the target state. Goal: refactor **without changing external behavior** — only structure, readability, maintainability, type/module boundaries, naming, and dependency isolation change. The public API/behavior contract is preserved as an invariant.
 
+  The architect MUST apply the `feature-landscape` skill **twice**: once to draw the **current** entity graph + layer map + integration points (the as-is landscape), and once to draw the **target** landscape after refactor. `Research.md` gets two sections: `## Landscape (current)` and `## Landscape (target)`. The diff between them IS the refactor scope; per-phase work items in `Plan.md` are derived from this diff.
+
 - **Plan** — `swift-toolkit:swift-architect`. Artifact: `Plan.md` with **two layers of progress tracking**:
   1. **Top-level phase progress table** (see `State Detection` in orchestrator: statuses ✅/🔄/⬜/⏸/🚫/⊘) — one row per phase, captures coarse-grained completion.
   2. **Per-phase detail section** for each phase — actionable items rendered as **markdown checkboxes** `- [ ] <item>`. Granularity: one checkbox per file to edit, per acceptance criterion, per test to add, per verification command to run. The checkboxes MUST be granular enough that they can be ticked individually as work progresses inside the phase (the Refactor stage will tick them — see Refactor below). Static prose inside per-phase sections (rationale, rollback markers, decisions) stays as plain bullets/text — only **action items** become checkboxes.
@@ -64,7 +66,9 @@ The fields that directly drive this workflow's behavior:
 
   If `start_phase=<phase_id>` was passed in args — `swift-toolkit:swift-refactorer` receives that phase as the start point in the Task-tool prompt. Already-completed phases (status `✅` in `Plan.md`) are skipped, not redone. The progress table is updated only for new / changed phases.
 
-- **Validation** — XcodeBuildMCP `test_sim` is **mandatory** (regression check: every existing test must pass without modification), `build_sim` optional. mobile MCP **only when UI-layer changes were made** — if the refactor touched SwiftUI/UIKit views, screens, or navigation, a smoke check in the simulator is required to verify the UI is not visually broken. For purely domain/infrastructure refactors mobile MCP is skipped. Artifact: `Validation.md` with the log and the verdict.
+- **Validation** — `swift-toolkit:swift-validator`. Artifact: `Validation.md`, **first line is required** to be `[VALIDATION_STATUS] = PASSED | FAILED | FLAKY` (the shared contract between `swift-validator`, every `workflow-*`, and the orchestrator; analogous to `[REVIEW_STATUS]`). For the REFACTOR profile, the validator runs XcodeBuildMCP `test_sim` mandatorily as a regression check (every pre-existing test must pass **without modification** — touching a test during a refactor is itself a finding), `build_sim` is optional, and mobile MCP runs only when the refactor touched a UI layer (SwiftUI/UIKit views, screens, or navigation) — purely domain/infrastructure refactors skip mobile MCP. Detailed behavior lives in `agents/swift-validator.md`.
+
+  The validator MUST apply the `mobile-ops-checklist` skill in **regression mode**: only items that were Applicable for the affected area pre-refactor are re-checked. Output: `OpsChecklist.md` in the task folder. A previously-Applicable item that no longer has verifiable evidence after the refactor is itself a finding — a violation of the refactor invariant (the refactor changed observable behavior). Pure additive items (new ops concerns introduced by the refactor) are flagged but do not block PASSED.
 
 - **Review** — `swift-toolkit:swift-reviewer` (if `need_review=true` in args). Artifact: `Review.md`, **first line is required** to be `[REVIEW_STATUS] = APPROVED | CHANGES_REQUESTED | DISCUSSION` (this field is the shared contract between workflow-* and the orchestrator; it is also used by `swift-toolkit:workflow-review` for auto-move into DONE/).
 
@@ -105,7 +109,7 @@ Field semantics:
 - `status=interrupted` — execution was interrupted by a technical fault or external signal (not by user decision): subagent disconnect, timeout, tool unavailable. Requires diagnostics on the orchestrator side.
 - `last_completed_stage` — the last stage that actually finished (not the one execution stopped on with an error).
 - `artifact_path` — path to the key artifact of the last stage: `Research.md` (after Analyze), `Plan.md` (after Plan and after Refactor — Refactor has no dedicated `.md` artifact), `Validation.md`, `Review.md`, `Done.md`.
-- `next_recommended_action=continue` — the next stage may start immediately; `stop` — natural finish (Done) or a fatal error; `ask_user` — confirmation is needed before continuing (e.g. after a Review with `CHANGES_REQUESTED`).
+- `next_recommended_action=continue` — the next stage may start immediately; `stop` — natural finish (Done) or a fatal error; `ask_user` — confirmation is needed before continuing (e.g. after a Validation with `[VALIDATION_STATUS] = FAILED | FLAKY`, or after a Review with `[REVIEW_STATUS] = CHANGES_REQUESTED`).
 - `notes` — short free-form description (e.g. the example in locale key `notes_test_failed_example`).
 
 Based on this, the orchestrator decides: continue, abort, or ask the user.
