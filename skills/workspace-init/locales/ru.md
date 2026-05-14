@@ -86,8 +86,11 @@ Workspace готов. Дальше: открой {workspace_name}.xcworkspace
 ## qa_project_name
 Имя project'а (используется для именования app-таргетов):
 
-## qa_app_platforms
-Какие платформы? (мульти-выбор; одна или обе: iOS, macOS)
+## qa_add_ios_app
+Добавить iOS-приложение в этот project? (Y/N)
+
+## qa_add_macos_app
+Добавить macOS-приложение в этот project? (Y/N)
 
 ## qa_app_repo_name
 Имя репо для {platform} (по умолчанию {default}):

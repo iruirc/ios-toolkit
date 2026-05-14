@@ -33,8 +33,10 @@ Always print the pre-flight summary first (using `preflight_*` locale keys):
 1. Ask `qa_workspace_name` (text). Validate against `[A-Za-z][A-Za-z0-9-]*` regex; reprompt on mismatch.
 2. Ask `qa_project_block` (Y/N). If Y:
    1. Ask `qa_project_name` (text). Validate against `[A-Za-z][A-Za-z0-9-]*`; reprompt on mismatch.
-   2. Ask `qa_app_platforms` as a **multi-select** with choices {`ios`, `macos`}. Both options are independent — the user MUST be able to select either, both, or any subset in a single prompt (no synthetic `end` choice, no per-platform repeat-loop). Require ≥1 selection; reprompt if the user submits an empty selection.
-   3. For each selected platform (deterministic order ios → macos): ask `qa_app_repo_name` (text). Default value = `{project-name}-{platform}`. Validate against `[A-Za-z][A-Za-z0-9-]*`.
+   2. Ask the two platforms **as separate Y/N prompts in this exact order** — do NOT combine them into a single multi-select prompt, do NOT mix platform choice with min-version or any other field:
+      1. `qa_add_ios_app` (Y/N).
+      2. `qa_add_macos_app` (Y/N).
+   3. After both answers: if BOTH are N, reprompt both questions from step 2.ii.1 (at least one platform must be selected). Otherwise, for each platform answered Y, in deterministic ios → macos order, ask `qa_app_repo_name` (text). Default value = `{project-name}-{platform}`. Validate against `[A-Za-z][A-Za-z0-9-]*`.
    4. **Do NOT ask stack Q&A here.** swift-init Q&A (UI framework, DI, architecture, async, min-platform) runs per app during execution phase s06b. Interactive `/workspace-init` MUST delegate the full swift-init Q&A for each declared app — do NOT pass `--no-prompt` in interactive mode. Only batch mode (`--from <yml>`) applies stack defaults silently via `swift-init --no-prompt`.
 3. Ask `qa_groups` (Y/N). If Y, repeat-loop: ask `name` + `dir`. Empty `name` ends loop.
 4. Ask `qa_remotes` (text, comma-separated). Split + trim.
