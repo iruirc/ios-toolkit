@@ -1,0 +1,8 @@
+workspace:
+  name: smm
+  tasks:
+    enabled: true
+    path: /Users/foo/work/tasks
+remotes: [origin]
+packages:
+  - { name: A, archetype: api-contract, git: {origin: x}, version: 0.1.0 }

@@ -113,10 +113,21 @@ teardown() {
   [[ "$output" == *"package 'C' dep 'A' not in allowed_deps"* ]]
 }
 
-@test "validate rejects commit symlink_mode with absolute external path" {
-  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/symlink-mode-mismatch.yml)' && wsyml::validate"
+@test "validate rejects tasks.path that is absolute" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/tasks-absolute-path.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]
-  [[ "$output" == *"symlink_mode 'commit' requires relative path"* ]]
+  [[ "$output" == *"tasks.path must be relative"* ]]
+}
+
+@test "validate rejects tasks.enabled that is not a boolean" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/tasks-bad-enabled.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"tasks.enabled must be boolean"* ]]
+}
+
+@test "validate accepts tasks.enabled: false" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/tasks-disabled.yml)' && wsyml::validate"
+  [ "$status" -eq 0 ]
 }
 
 @test "validate rejects example_app without example_platform" {

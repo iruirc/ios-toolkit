@@ -63,6 +63,7 @@ swift-init [--no-prompt]
            [--async=async-await|combine|rxswift]
            [--min-ios=<semver>]
            [--min-macos=<semver>]
+           [--with-tasks]
            [<output-dir>]
 ```
 
@@ -71,6 +72,7 @@ swift-init [--no-prompt]
 - **No flags** → existing interactive Q&A unchanged.
 - **`--no-prompt` without all decision-flags** → apply per-platform defaults (selected via `--platform=` value) and proceed without Q&A. **`--platform=` is required when `--no-prompt` is set**; if absent, exit 2 with error "platform is required when --no-prompt is set".
 - **Flags present without `--no-prompt`** → flags act as Q&A defaults but Q&A still runs for missing decisions (legacy compat).
+- **`--with-tasks`** → opt-in for per-project `Tasks/` scaffold (subfolders `TODO/`, `ACTIVE/`, `DONE/`). **Default is OFF.** When invoked by `workspace-init`, the caller deliberately omits this flag — a single shared `Tasks/` repo is created at the workspace-parent level instead. Standalone users who want a project-local `Tasks/` must pass this flag explicitly.
 - **Output dir** defaults to `cwd` per existing behavior.
 
 ### Per-platform defaults (when `--no-prompt` set + decision-flag missing)
@@ -114,8 +116,8 @@ For every mode:
 - `CLAUDE-swift-toolkit.md` with filled `## Stack` and `## Mode` sections (`manual` by default); `## Modules` only for multi-target SPM packages (for apps the section stays empty — modules are added once the user attaches local packages, see **Multi-module projects**); `## Paths` only if paths deviate from defaults
 - minimal user-owned `CLAUDE.md` with H1 placeholder + a single `@./CLAUDE-swift-toolkit.md` import line + a comment explaining the file's role
 - `.swiftlint.yml` with sensible defaults
-- Empty `Tasks/` folder with subfolders `TODO/`, `ACTIVE/`, `DONE/`
 - `README.md` with brief project description + how to build
+- `Tasks/` folder with subfolders `TODO/`, `ACTIVE/`, `DONE/` — **only when `--with-tasks` is passed**. Default is OFF: workspace-init relies on a single shared `Tasks/` repo at the workspace-parent; standalone users who want a project-local one must opt in.
 
 For apps additionally:
 - `project.yml` — XcodeGen spec, source of truth (commit it; `.xcodeproj` is regenerated on demand)

@@ -1,0 +1,26 @@
+# {{WORKSPACE_NAME}} — Tasks
+
+Shared task tracker for the **{{WORKSPACE_NAME}}** workspace.
+
+This repository sits at the workspace-parent level, alongside the meta-repo,
+package repos, and project repos. It is its own git repository so that task
+history can be versioned and synced independently of the source code.
+
+## Layout
+
+```
+Tasks/
+├── TODO/    # planned tasks, not yet started
+├── ACTIVE/  # tasks currently in progress
+└── DONE/    # completed tasks (archive)
+```
+
+## Conventions
+
+- One task per Markdown file. Name pattern: `<date>-<short-slug>.md`
+  (e.g. `2026-05-14-add-rate-limiter.md`).
+- Move files between `TODO/` → `ACTIVE/` → `DONE/` as state changes;
+  do not duplicate.
+- Cross-link related code in the corresponding package or project repo using
+  relative paths from this repo's root (`../packages/<name>/...` or
+  `../<project-repo>/...`).

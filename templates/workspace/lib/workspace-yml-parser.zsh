@@ -80,7 +80,7 @@ wsyml::validate() {
   local ws_name pkg_count pkgs groups remote_list
   local known_archs="api-contract engine library feature"
   local p g d r k pg deps git_keys arch ver allowed a
-  local example_app example_platform tasks_path tasks_mode author
+  local example_app example_platform tasks_path tasks_enabled author
   local has_project proj_name app_keys ak app_repo
   local v mp_keys mpk mpv
   local -A seen group_set remote_set allowed_set seen_repos
@@ -194,23 +194,21 @@ wsyml::validate() {
     fi
   done
 
-  # Rule 11: tasks.symlink_mode consistency
+  # Rule 11: workspace.tasks schema. tasks.enabled must be boolean (default true);
+  # tasks.path must be a relative path (resolved relative to workspace-parent, default ./Tasks).
   tasks_path="$(wsyml::get '.workspace.tasks.path' 2>/dev/null || echo './Tasks')"
-  tasks_mode="$(wsyml::get '.workspace.tasks.symlink_mode' 2>/dev/null || echo 'local')"
-  case "$tasks_mode" in
-    commit)
-      if [[ "$tasks_path" = /* ]]; then
-        print -u2 "$_path: tasks.symlink_mode 'commit' requires relative path; got '$tasks_path'"
-        ((errs++))
-      fi
-      ;;
-    local)
-      ;;
+  tasks_enabled="$(wsyml::get '.workspace.tasks.enabled' 2>/dev/null || echo 'true')"
+  case "$tasks_enabled" in
+    true|false) ;;
     *)
-      print -u2 "$_path: tasks.symlink_mode must be 'local' or 'commit'; got '$tasks_mode'"
+      print -u2 "$_path: tasks.enabled must be boolean (true|false); got '$tasks_enabled'"
       ((errs++))
       ;;
   esac
+  if [[ "$tasks_path" = /* ]]; then
+    print -u2 "$_path: tasks.path must be relative to workspace-parent; got absolute '$tasks_path'"
+    ((errs++))
+  fi
 
   # Rule 14: bootstrap.git_author format (when supplied)
   author="$(wsyml::get '.bootstrap.git_author' 2>/dev/null || true)"

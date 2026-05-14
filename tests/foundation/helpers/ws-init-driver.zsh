@@ -37,6 +37,22 @@ done < <(find "$templates_root/meta-repo" -type f -name '*.tmpl')
 cp "$ws_yml" "$meta_dir/workspace.yml"
 ( cd "$meta_dir" && git init -q -b main && touch .gitkeep )
 
+# s09_tasks: shared Tasks repo at workspace-parent (sibling to meta-repo / packages / project repos)
+tasks_enabled="$(wsyml::get '.workspace.tasks.enabled' 2>/dev/null || echo 'true')"
+tasks_path="$(wsyml::get '.workspace.tasks.path' 2>/dev/null || echo './Tasks')"
+if [[ "$tasks_enabled" == "true" ]]; then
+  tasks_dir="$ws_parent/${tasks_path#./}"
+  mkdir -p "$tasks_dir/TODO" "$tasks_dir/ACTIVE" "$tasks_dir/DONE"
+  while IFS= read -r src; do
+    rel="${src#$templates_root/tasks-repo/}"
+    rel="${rel%.tmpl}"
+    dst="$tasks_dir/$rel"
+    mkdir -p "${dst:h}"
+    sed "s|{{WORKSPACE_NAME}}|$ws_name|g" "$src" > "$dst"
+  done < <(find "$templates_root/tasks-repo" -type f \( -name '*.tmpl' -o -name '.gitkeep' \))
+  ( cd "$tasks_dir" && git init -q -b main )
+fi
+
 # Per package
 for p in $(wsyml::packages); do
   arch="$(wsyml::package_field "$p" archetype)"

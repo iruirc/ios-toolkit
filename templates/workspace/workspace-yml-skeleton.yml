@@ -6,8 +6,8 @@ workspace:
   xcworkspace: true
   code_workspace: true
   tasks:
+    enabled: true
     path: ./Tasks
-    symlink_mode: local
 
 remotes:
   - origin
