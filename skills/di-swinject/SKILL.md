@@ -300,14 +300,12 @@ container.register(RootViewModel.self) { resolver in
 
 `assumeIsolated` traps at runtime if the closure ever runs off the main actor — and the design intent ("UI is built on main") is hidden from the type system. Keep `assumeIsolated` for true legacy/sync-callback bridges, not for DI wiring you control.
 
-### ✅ Correct — register a `nonisolated` Factory, build UI on main
-
-Register a **plain struct factory** (nonisolated) that holds the `Resolver`; put `@MainActor` on its `make…` method, which constructs the ViewModel and View on the main actor:
+### ❌ Also wrong — `*Factory` that holds a `Resolver`
 
 ```swift
 // Modules/Root/RootFactory.swift
 struct RootFactory {
-    private let resolver: Resolver
+    private let resolver: Resolver                              // ← Swinject leaks into feature code
     init(resolver: Resolver) { self.resolver = resolver }
 
     @MainActor
@@ -316,29 +314,79 @@ struct RootFactory {
         return RootViewController(viewModel: viewModel)
     }
 }
+```
 
-// DI/RootAssembly.swift
-final class RootAssembly: Assembly {
-    func assemble(container: Container) {
-        container.register(RootFactory.self) { resolver in
-            RootFactory(resolver: resolver)
-        }
+This solves the `@MainActor` build error but reintroduces the **Service Locator** anti-pattern that `di-module-assembly` exists to prevent: the Factory now imports `Swinject`, the dependency surface of the screen is invisible at the type level, and the closure can resolve anything from the global graph. Coordinator tests can no longer mock the Factory without spinning up a real container.
+
+### ✅ Correct — `*Factory` accepts a `*FeatureDependencies` protocol, built UI on main
+
+Use the canonical chain from `di-module-assembly`: `AppDependencyContainer` is the only type that imports `Swinject` and calls `container.resolve(...)`. Feature `*Factory` types receive a narrow `*FeatureDependencies` protocol via init and have a `@MainActor` `make…` method that wires the View + ViewModel:
+
+```swift
+// DI/Protocols/RootFeatureDependencies.swift
+protocol RootFeatureDependencies {
+    var appInfoService: AppInfoService { get }
+}
+
+// Modules/Root/RootFactory.swift              ← no `import Swinject`
+struct RootFactory {
+    private let dependencies: RootFeatureDependencies
+    init(dependencies: RootFeatureDependencies) { self.dependencies = dependencies }
+
+    @MainActor
+    func makeViewController() -> RootViewController {
+        let viewModel = RootViewModel(appInfo: dependencies.appInfoService)
+        return RootViewController(viewModel: viewModel)
     }
 }
 
-// Coordinator / AppDelegate (already @MainActor)
-let factory = resolver.resolve(RootFactory.self)!
-let viewController = factory.makeViewController()
+// DI/AppDependencyContainer.swift             ← the ONLY file that imports Swinject
+import Swinject
+
+@MainActor
+final class AppDependencyContainer: AppDependencies {
+    private let container: Container
+    init(container: Container) { self.container = container }
+
+    // RootFeatureDependencies conformance
+    var appInfoService: AppInfoService {
+        container.resolve(AppInfoService.self)!
+    }
+}
+
+// DI/ModuleFactory/ModuleFactoryImp.swift     ← no `import Swinject`
+@MainActor
+final class ModuleFactoryImp: RootModuleFactory {
+    private let dependencies: AppDependencies
+    init(dependencies: AppDependencies) { self.dependencies = dependencies }
+
+    func makeRootFactory() -> RootFactory {
+        RootFactory(dependencies: dependencies)         // protocol upcast: AppDependencies → RootFeatureDependencies
+    }
+}
+
+// Coordinator / AppDelegate (already @MainActor) — receives ModuleFactory, NOT Resolver
+final class AppCoordinator {
+    private let moduleFactory: RootModuleFactory
+    init(moduleFactory: RootModuleFactory) { self.moduleFactory = moduleFactory }
+
+    func start(window: UIWindow) {
+        let viewController = moduleFactory.makeRootFactory().makeViewController()
+        window.rootViewController = viewController
+        window.makeKeyAndVisible()
+    }
+}
 ```
 
 **Rules:**
 
-- `*Factory` is a `nonisolated` struct (no `@MainActor` on the type, no `@MainActor` on `init`) — Swinject's closure can build it freely.
+- `*Factory` is a `nonisolated` struct/`enum` and **never** imports `Swinject` or holds a `Resolver`. It only knows about its `*FeatureDependencies` protocol.
 - The `make…` method is `@MainActor` — it's the boundary that crosses into UI isolation, called from `@MainActor` Coordinator / `AppDelegate` / `SceneDelegate`.
-- Register `*Factory` types in Swinject, **not** ViewModels/ViewControllers. Services stay registered directly (they're `nonisolated`).
+- `import Swinject` is restricted to `AppDependencyContainer` (and Swinject Assemblies that register services in it). Feature code, Coordinators, ModuleFactory, `*Factory`, `*Assembly` must not import it.
 - For runtime parameters (`itemId`, `userId`, …) add them as method parameters on `make…`, not as Swinject `arguments:` — keeps the isolation boundary explicit.
+- Services (`AppInfoService`, etc.) stay registered in Swinject directly (they're `nonisolated`); the Factory pulls them through the dependency protocol, not via `resolver.resolve`.
 
-This matches the Factory pattern in `di-module-assembly` (`ModuleFactory` + `ModuleComponents`) — that skill explains the full Coordinator wiring; the rule above is just the Swinject-specific contract that lets the two layers compose under Swift 6 concurrency.
+This matches the Factory pattern in `di-module-assembly` (`ModuleFactory` + `ModuleComponents`) — that skill is the source of truth for the full chain. The Swinject-specific bit is: registered types stay `nonisolated`, `@MainActor` lives on the `make…` method, and `Resolver` never appears outside `AppDependencyContainer`.
 
 ## Coordinator and Module Assembly
 

@@ -11,7 +11,7 @@ This skill provides Factory-specific guidelines: `Container`/`SharedContainer` m
 
 > **Related skills:**
 > - `di-composition-root` — where the Container lives, how bootstrap starts, sync vs async, scopes as a strategy (Factory only covers the container itself; the CR is where it's created and operated)
-> - `di-module-assembly` — how Coordinators get dependencies via `CoordinatorFactory` / `ModuleFactory`. With Factory those Factory objects either resolve dependencies via `Container.shared.foo()` or accept a `Container` in init — but the architectural pattern is identical to the Swinject variant
+> - `di-module-assembly` — how Coordinators get dependencies via `CoordinatorFactory` / `ModuleFactory`. **Canonical wiring is identical to the Swinject variant: only `AppDependencyContainer` imports `FactoryKit` and resolves via `Container.shared.foo()`; ModuleFactory and feature `*Factory`/`*Assembly` types receive a narrow `*FeatureDependencies` protocol through init and never see `Container` / `Container.shared`.** "ModuleFactory calls `Container.shared.foo()` directly" is the Service Locator shortcut and is explicitly rejected — see the "Coordinator and Module Assembly" section below
 > - `di-swinject` — alternative DI framework. Comparison table at the end of this skill
 > - `pkg-spm-design` — Factory, just like Swinject, **must not be imported into the main target of an SPM package**. Modular `extension Container` per feature lives in the **app target**, see "Modular Containers" section below
 > - `arch-tca` — TCA uses its own `@Dependency` system; don't mix it with Factory inside TCA features
@@ -420,7 +420,7 @@ Contexts are **additive** — several can be chained. The production closure (th
 
 ## Coordinator and Module Assembly
 
-The architectural pattern (`AppDependencies` → `CoordinatorFactory` → `ModuleFactory`) **doesn't change** — only the `AppDependencyContainer` implementation does. See `di-module-assembly` for the full example. The difference vs Swinject:
+The architectural pattern (`AppDependencies` → `*FeatureDependencies` → `CoordinatorFactory` → `ModuleFactory` → `Assembly`) **doesn't change** — only the `AppDependencyContainer` implementation does. See `di-module-assembly` for the full example. The difference vs Swinject:
 
 ```swift
 // Swinject
@@ -438,9 +438,45 @@ final class AppDependencyContainer: AppDependencies {
 }
 ```
 
-**Coordinators do NOT touch `Container.shared` directly** — they receive `CoordinatorFactory` and `ModuleFactory` via init. This preserves testability and the compile-checked dependency chain. See `di-module-assembly`, "CoordinatorFactory" section.
+`import FactoryKit` lives **only** in `AppDependencyContainer` (and the `extension Container` files that register services). `ModuleFactoryImp`, `CoordinatorFactoryImp`, feature `*Factory`/`*Assembly`, Coordinators, ViewModels and Views must not import `FactoryKit` and must not touch `Container` / `Container.shared`. They receive `AppDependencies` / `*FeatureDependencies` and feature factory protocols through init.
+
+```swift
+// ✅ Correct — ModuleFactoryImp receives AppDependencies, NOT Container
+@MainActor
+final class ModuleFactoryImp: ProfileModuleFactory {
+    private let dependencies: AppDependencies
+    init(dependencies: AppDependencies) { self.dependencies = dependencies }
+
+    func makeProfileModule() -> ModuleComponents<ProfileViewController, ProfileViewModel> {
+        ProfileAssembly.assemble(dependencies: dependencies)    // protocol upcast: AppDependencies → ProfileFeatureDependencies
+    }
+}
+```
+
+```swift
+// ❌ Wrong — ModuleFactoryImp imports FactoryKit and reaches into Container.shared
+import FactoryKit                                              // ← never here
+
+@MainActor
+final class ModuleFactoryImp: ProfileModuleFactory {
+    func makeProfileModule() -> ModuleComponents<ProfileViewController, ProfileViewModel> {
+        ProfileAssembly.assemble(
+            dependencies: Container.shared                     // ← Service Locator
+        )
+    }
+}
+```
+
+```swift
+// ❌ Wrong — Coordinator accepts the container instead of the factory
+final class AppCoordinator {
+    init(window: UIWindow, container: Container) { … }         // ← never accept Container/Resolver
+}
+```
 
 > **Shortcut inside ModuleFactory.** It can be tempting to let `ModuleFactory` call `Container.shared.foo()` directly and drop the `AppDependencyContainer` facade. Don't do this: it disguises a Service Locator, breaks Coordinator tests (no init injection — no mock), and zeroes out compile-time visibility of the dependency surface. The pattern is the same on 1, 5, and 50 screens — the cost of the facade pays for itself the first time you have a regression.
+
+> **`@Injected` exception.** `@Injected` is acceptable inside ViewModels/Coordinators **only** when the project has explicitly opted into property-wrapper injection at the architecture level and there is no ModuleFactory layer for that feature. In a project that uses the Module Assembly chain (the default scaffold), `@Injected` on a ViewModel bypasses the chain — the ViewModel goes through constructor injection from `*Assembly`, not via `@Injected`. Mixing both styles in the same feature produces hidden dependencies that don't show up in `ProfileAssembly.assemble(dependencies:)` signatures.
 
 ## Testing
 

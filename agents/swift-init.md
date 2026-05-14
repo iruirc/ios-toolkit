@@ -41,7 +41,7 @@ Before generating, gather:
 For apps:
 - UI framework: UIKit / SwiftUI / AppKit
 - Async approach: async/await / Combine / RxSwift
-- DI: four options. **Present them to the user in this exact display order — do NOT reorder by recommendation, default, or platform:** (1) **Swinject** (runtime container, autoregister, name-binding — see `di-swinject`); (2) **Factory** by hmlongco (compile-time DI, `@Injected` property wrapper, preview/test contexts — see `di-factory`); (3) **manual + Factory pattern** (hand-written `CoordinatorFactory`/`ModuleFactory` without a DI library, see `di-module-assembly` + the "Manual DI" section of `di-composition-root`); (4) **plain manual** (no structure — for 1–3 screen prototypes). **Do not confuse the Factory pattern (an architectural pattern) with the Factory library (hmlongco/Factory)** — they are distinct: the Factory pattern exists everywhere, while the Factory library is a separate choice. If the user is unsure, run `architecture-choice` (its Stack Cookbook contains a DI tiebreaker) — but the order in the UI stays Swinject → Factory → manual+Factory → plain. Project-type hints (informational only, NOT a reason to swap positions): SwiftUI-first projects often pick Factory; UIKit projects needing autoregister often pick Swinject; under 10 services often pick manual
+- DI: four options. **Present them to the user in this exact display order — do NOT reorder by recommendation, default, or platform:** (1) **Swinject** (runtime container, autoregister, name-binding — see `di-swinject`); (2) **Factory** by hmlongco (compile-time DI, `@Injected` property wrapper, preview/test contexts — see `di-factory`); (3) **manual + Factory pattern** (hand-written `CoordinatorFactory`/`ModuleFactory` without a DI library, see `di-module-assembly` + the "Manual DI" section of `di-composition-root`); (4) **plain manual** (no structure — for 1–3 screen prototypes). **Do not confuse the Factory pattern (an architectural pattern) with the Factory library (hmlongco/Factory)** — they are distinct: the Factory pattern exists everywhere, while the Factory library is a separate choice. **For options 1–3 the generated scaffold MUST follow the Module Assembly chain (see "Module Assembly Chain" section below) — only `AppDependencyContainer` knows about the DI library, every other layer talks to it through `AppDependencies` / `*FeatureDependencies` protocols. Option 4 opts out of the chain on purpose.** If the user is unsure, run `architecture-choice` (its Stack Cookbook contains a DI tiebreaker) — but the order in the UI stays Swinject → Factory → manual+Factory → plain. Project-type hints (informational only, NOT a reason to swap positions): SwiftUI-first projects often pick Factory; UIKit projects needing autoregister often pick Swinject; under 10 services often pick manual
 - Architecture: MVVM+Coordinator / VIPER / Clean Architecture / MVC. **If the user is unsure or asks for advice**, run the `architecture-choice` skill (5-axis compass) and answer with a Decision Matrix row; do not guess from the project name
 - Platforms + minimum versions (iOS 16+, macOS 13+, etc.)
 
@@ -132,6 +132,74 @@ For SPM packages:
 - `Sources/<Name>/` with a placeholder public API
 - `Tests/<Name>Tests/` with a placeholder test
 
+## Module Assembly Chain (mandatory for DI options 1–3)
+
+The same architectural chain is generated for **Swinject, Factory (hmlongco), and manual + Factory pattern**. Only the body of `AppDependencyContainer` differs. The chain is the single source of truth for `di-module-assembly`; this section is the contract every app scaffold must satisfy.
+
+### Required file layout
+
+For an app target `<App>` with at least one root screen (`Root`):
+
+```
+<App>/
+├── App/
+│   ├── AppDelegate.swift                   # creates AppDependencyContainer, ModuleFactory, AppCoordinator
+│   └── SceneDelegate.swift                 # (UIKit only) starts AppCoordinator
+├── DI/
+│   ├── AppDependencyContainer.swift        # the ONLY file that imports the DI library
+│   ├── Registrations.swift                 # (Swinject/Factory only) container.register(...) / extension Container { … }
+│   ├── Protocols/
+│   │   ├── AppDependencies.swift           # composite: AppDependencies = RootFeatureDependencies & …
+│   │   └── RootFeatureDependencies.swift   # one file per feature; declares only what the feature needs
+│   └── ModuleFactory/
+│       ├── RootModuleFactory.swift         # protocol: func makeRootModule() -> ModuleComponents<…>
+│       └── ModuleFactoryImp.swift          # conforms to every *ModuleFactory; holds AppDependencies
+├── Coordinators/
+│   ├── AppCoordinator.swift                # accepts RootModuleFactory (and CoordinatorFactory if multi-feature). NEVER accepts Resolver/Container/Assembler/Container.shared
+│   └── (CoordinatorFactory.swift + CoordinatorFactoryImp.swift when ≥2 features exist)
+└── Modules/
+    └── Root/
+        ├── RootAssembly.swift              # enum, static assemble(dependencies: RootFeatureDependencies) -> ModuleComponents<RootViewController, RootViewModel>
+        ├── RootViewController.swift        # constructor-injected ViewModel; no @Injected
+        └── RootViewModel.swift             # constructor-injected services; no @Injected, no Resolver, no Container.shared
+```
+
+`ModuleComponents<View, ViewModel>` is generated once in `DI/ModuleComponents.swift` (per `di-module-assembly`).
+
+### Mandatory rules (apply to all three DI options)
+
+1. **DI library import is restricted.** `import Swinject` (option 1) and `import FactoryKit` (option 2) appear **only** in `DI/AppDependencyContainer.swift` and `DI/Registrations.swift`. Manual DI (option 3) has no DI library to import. A grep across the rest of the app target must return zero matches.
+2. **`AppDependencyContainer` is the only Service-Locator-aware type.** It owns the `Container` / `Assembler` (Swinject), or accesses `Container.shared` (Factory), or holds `lazy var` graph (manual). It conforms to `AppDependencies` and exposes each dependency as a property.
+3. **`AppDependencies` is a composite protocol** that inherits from every `*FeatureDependencies`. Each feature declares its narrow protocol with just the services it needs.
+4. **`*Assembly` accepts `*FeatureDependencies`, not `AppDependencies`.** `ModuleFactoryImp` performs the protocol upcast (`AppDependencies` → `*FeatureDependencies`) at the call site. This keeps each feature's dependency surface visible and testable.
+5. **Coordinators accept feature factory protocols, not the DI container.** Allowed init parameters: `Router`, `CoordinatorFactory`, `*ModuleFactory`. Forbidden init parameters: `Resolver`, `Container`, `Assembler`, `Container.shared`, `AppDependencies` (only `ModuleFactoryImp` and `CoordinatorFactoryImp` see the container/AppDependencies directly).
+6. **ViewModels / Views receive plain protocol-typed services through init.** No `@Injected`, no `resolver.resolve`, no `Container.shared.foo()`, no `lazy var` shortcuts. The `*Assembly` is the only place that builds them.
+7. **Swift 6 / `@MainActor` rule (Swinject):** ViewModels and ViewControllers are `@MainActor`. Swinject's `register(_:factory:)` closure is nonisolated. Therefore Swinject registers **services and the `*Factory` struct** (nonisolated), not `@MainActor` types directly. The `*Factory`'s `make…` method is `@MainActor` and constructs the View + ViewModel. The `*Factory` accepts `*FeatureDependencies`, not `Resolver`. See `di-swinject` → "`@MainActor` UI types + Swinject" for the canonical example.
+
+### Per-DI body of `AppDependencyContainer` (everything else is identical)
+
+| DI option | Body of the dependency property |
+|---|---|
+| 1 — Swinject | `var appInfoService: AppInfoService { container.resolve(AppInfoService.self)! }` |
+| 2 — Factory (hmlongco) | `var appInfoService: AppInfoService { Container.shared.appInfoService() }` |
+| 3 — manual + Factory pattern | `lazy var appInfoService: AppInfoService = AppInfoService(...)` |
+
+### Validation grep before reporting "done"
+
+After generating, run these greps from the app target root. **All must return zero matches in feature code** (`Coordinators/`, `Modules/`, `Views/`, `ViewModels/`, `DI/ModuleFactory/`, `DI/Protocols/`):
+
+| DI option | Forbidden patterns in feature code |
+|---|---|
+| Swinject | `import Swinject`, `Resolver`, `Container.self`, `Assembler`, `\.resolve(` |
+| Factory (hmlongco) | `import FactoryKit`, `import Factory\b`, `Container.shared`, `@Injected`, `@LazyInjected`, `@InjectedObservable`, `@WeakLazyInjected` |
+| manual + Factory | (no DI library; just verify Coordinators/Views do not directly instantiate concrete services) |
+
+If any grep matches outside `DI/AppDependencyContainer.swift` or `DI/Registrations.swift`, the scaffold is wrong — fix before reporting.
+
+### Skip the chain only for option 4
+
+"Plain manual" is the prototype escape hatch (1–3 screens). It produces a single AppDelegate that builds services inline and passes them to a single ViewController. No `AppDependencyContainer`, no `*FeatureDependencies`, no `ModuleFactory`. Picking option 4 must be a conscious user choice — never default to it.
+
 ## What NOT to Generate Without Explicit Request
 
 - Docker / Dockerfile / docker-compose
@@ -173,8 +241,8 @@ Consult the relevant skill when scaffolding. The skill body defines the folder s
 - `arch-clean` — Domain/Data/Presentation folder split, Use Cases, Repository protocols
 - `arch-mvc` — classic MVC folder layout
 - `arch-tca` — The Composable Architecture (Point-Free): folder layout (`*Feature.swift` + `*View.swift`), `swift-composable-architecture` SPM dependency, root `Store` wired in `@main App`, `@Reducer` + `@ObservableState` scaffolding. Use only when CLAUDE-swift-toolkit.md `## Stack` already records TCA — do not propose it on a new project unless the user explicitly asks; default to MVVM
-- `di-swinject` — Swinject specifics: scopes, registrations, autoregister, test containers. **If DI=Swinject and the project has `@MainActor` ViewModels/ViewControllers (UIKit/AppKit apps under Swift 6), do NOT generate `container.register(ViewModel.self)`/`container.register(ViewController.self)` factories — Swinject's closure is nonisolated and the build will fail. Generate a `nonisolated struct *Factory { let resolver: Resolver; @MainActor func makeViewController() -> … }` per module and register the Factory instead; the Coordinator/AppDelegate resolves the Factory and calls `make…()` on main. See the "`@MainActor` UI types + Swinject" section in `di-swinject`.**
-- `di-factory` — Factory (hmlongco) specifics: `Container`/`SharedContainer`, property-wrapper injection (`@Injected`/`@LazyInjected`), scopes (`.cached`/`.singleton`/`.shared`/`.graph`/`.unique`), `AutoRegistering`, contexts (`onTest`/`onPreview`)
+- `di-swinject` — Swinject specifics: scopes, registrations, autoregister, test containers. **If DI=Swinject and the project has `@MainActor` ViewModels/ViewControllers (UIKit/AppKit apps under Swift 6), do NOT generate `container.register(ViewModel.self)`/`container.register(ViewController.self)` factories — Swinject's closure is nonisolated and the build will fail. Generate a `nonisolated struct *Factory { let dependencies: *FeatureDependencies; @MainActor func makeViewController() -> … }` per module — the `*Factory` accepts the feature dependency protocol, NOT a `Resolver` — and `ModuleFactoryImp` builds it via `*Factory(dependencies: appDependencyContainer)`. Coordinator/AppDelegate calls `make…()` on main. See the "`@MainActor` UI types + Swinject" section in `di-swinject`.**
+- `di-factory` — Factory (hmlongco) specifics: `Container`/`SharedContainer`, property-wrapper injection (`@Injected`/`@LazyInjected`), scopes (`.cached`/`.singleton`/`.shared`/`.graph`/`.unique`), `AutoRegistering`, contexts (`onTest`/`onPreview`). **For scaffolded apps `@Injected` is NOT used on ViewModels — the Module Assembly chain provides constructor injection through `*Assembly.assemble(dependencies:)`. `@Injected` would bypass the chain and hide dependencies from the Assembly signature; see "Module Assembly Chain" below.**
 - `di-composition-root` — where the CR lives (SceneDelegate / @main App / AppDelegate), sync vs async bootstrap, scopes (app/scene/flow), comparison table manual / Swinject / Factory
 - `di-module-assembly` — Factory pattern for UI features, non-UI factories, late & conditional initialization (works over any DI)
 - `pkg-spm-design` — 4 SPM package archetypes (Feature / Library / API-Contract / Engine-SDK) with public-surface rules
