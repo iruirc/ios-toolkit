@@ -49,6 +49,12 @@ Workspace-зависимости (мультивыбор):
 ## qa_pkg_example_app
 Генерировать Example/ (xcodegen, Cluster 3)?
 
+## qa_tasks_enabled
+Создать общий Tasks/-репо на уровне workspace-parent (рядом с packages и project-репо)? (Y/N, по умолчанию Y)
+
+## qa_tasks_path
+Путь к Tasks/ (относительно workspace-parent, по умолчанию ./Tasks):
+
 ## qa_bootstrap_use_gh
 Создавать GitHub-репо через gh?
 

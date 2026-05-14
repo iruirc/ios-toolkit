@@ -49,6 +49,12 @@ Workspace-internal deps (multiselect):
 ## qa_pkg_example_app
 Generate Example/ (xcodegen, Cluster 3)?
 
+## qa_tasks_enabled
+Provision a shared Tasks/ repo at the workspace-parent level (sibling to packages and project repos)? (Y/N, default Y)
+
+## qa_tasks_path
+Tasks/ directory path (relative to workspace-parent, default ./Tasks):
+
 ## qa_bootstrap_use_gh
 Create GitHub repos via gh?
 

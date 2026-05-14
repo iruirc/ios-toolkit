@@ -42,13 +42,14 @@ Always print the pre-flight summary first (using `preflight_*` locale keys):
 4. Ask `qa_remotes` (text, comma-separated). Split + trim.
 5. Repeat-loop for packages: ask `qa_pkg_name`, `qa_pkg_archetype` (multi-choice), `group` (multi-choice from declared groups, if any), one git URL per declared remote, `qa_pkg_version`, `qa_pkg_deps` (multi-select from declared packages so far), external deps (Y/N → loop), `allowed_deps` (default = archetype rule, override Y/N), `qa_pkg_example_app`. Empty `qa_pkg_name` ends loop. Require ≥ 1 package.
 6. Ask defaults overrides (Y/N) for `default_branch`, `push_remotes`, `release_strategy`.
-7. Ask bootstrap (`qa_bootstrap_use_gh`, `qa_bootstrap_push_after_init`, `qa_bootstrap_commit_after_init`). Optional: `initial_commit_message` (default "Initial commit"), `git_author` (text, optional).
-8. Render `workspace.yml` to chat (use yq from collected values). Print `confirm_summary_header` + summary table (meta-repo dir, package count, remote count, will-commit Y/N, will-push Y/N).
+7. Ask `qa_tasks_enabled` (Y/N, default Y). If Y, ask `qa_tasks_path` (text, default `./Tasks`). Validate path: must NOT be absolute (no leading `/`), must NOT contain `..` segments (avoid escaping workspace-parent). Reprompt on validation failure. Record into `workspace.tasks.enabled` / `workspace.tasks.path`. If N, set `tasks.enabled: false` and skip the path prompt (s09 will skip at execution).
+8. Ask bootstrap (`qa_bootstrap_use_gh`, `qa_bootstrap_push_after_init`, `qa_bootstrap_commit_after_init`). Optional: `initial_commit_message` (default "Initial commit"), `git_author` (text, optional).
+9. Render `workspace.yml` to chat (use yq from collected values). Print `confirm_summary_header` + summary table (meta-repo dir, package count, remote count, tasks-repo path or `disabled`, will-commit Y/N, will-push Y/N).
 
    When `project:` block is present, the summary additionally shows:
    - `{N} project repos: {ios=<repo>, macos=<repo>}`
    - `Will trigger /swift-init for: {apps_csv}` (interactive mode only — batch runs swift-init silently with `--no-prompt`)
-9. Ask `confirm_prompt` (Y/N). On N, emit `abort_no_changes`, exit 0. On Y, write `workspace.yml` to `<workspace-parent>/<workspace-name>-meta/workspace.yml` and continue to **shared execution**.
+10. Ask `confirm_prompt` (Y/N). On N, emit `abort_no_changes`, exit 0. On Y, write `workspace.yml` to `<workspace-parent>/<workspace-name>-meta/workspace.yml` and continue to **shared execution**.
 
 ## Batch flow
 
