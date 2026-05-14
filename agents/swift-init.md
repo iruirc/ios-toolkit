@@ -63,6 +63,7 @@ swift-init [--no-prompt]
            [--async=async-await|combine|rxswift]
            [--min-ios=<semver>]
            [--min-macos=<semver>]
+           [--main-target-name=<name>]
            [--with-tasks]
            [<output-dir>]
 ```
@@ -73,6 +74,7 @@ swift-init [--no-prompt]
 - **`--no-prompt` without all decision-flags** → apply per-platform defaults (selected via `--platform=` value) and proceed without Q&A. **`--platform=` is required when `--no-prompt` is set**; if absent, exit 2 with error "platform is required when --no-prompt is set".
 - **Flags present without `--no-prompt`** → flags act as Q&A defaults but Q&A still runs for missing decisions (legacy compat).
 - **`--with-tasks`** → opt-in for per-project `Tasks/` scaffold (subfolders `TODO/`, `ACTIVE/`, `DONE/`). **Default is OFF.** When invoked by `workspace-init`, the caller deliberately omits this flag — a single shared `Tasks/` repo is created at the workspace-parent level instead. Standalone users who want a project-local `Tasks/` must pass this flag explicitly.
+- **`--main-target-name=<name>`** → overrides the auto-derived project / main-target / `.xcodeproj` name. When present: `project.yml` `name:` field, the single app target name, the scheme name, and the resulting `<name>.xcodeproj` all use `<name>` verbatim. When absent: fall back to the basename of `<output-dir>` (or the basename of `cwd` if no output-dir is supplied) for both target name and `.xcodeproj`. `workspace-init` passes this flag set to `apps.<platform>.repo` so multiple platform-specific app repos within one workspace do not collide on the same `.xcodeproj` filename when opened side-by-side in Xcode.
 - **Output dir** defaults to `cwd` per existing behavior.
 
 ### Per-platform defaults (when `--no-prompt` set + decision-flag missing)

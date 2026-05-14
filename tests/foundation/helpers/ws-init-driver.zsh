@@ -114,7 +114,7 @@ if [[ -n "$proj_name" ]]; then
     app_repo="$(wsyml::get ".project.apps.$ak.repo" 2>/dev/null || true)"
     [[ -z "$app_repo" ]] && app_repo="$(wsyml::get ".project.apps.$ak" 2>/dev/null || true)"
     [[ -z "$app_repo" ]] && continue
-    proj_refs+="   <FileRef location=\"group:../$app_repo/$proj_name.xcodeproj\"></FileRef>"$'\n'
+    proj_refs+="   <FileRef location=\"group:../$app_repo/$app_repo.xcodeproj\"></FileRef>"$'\n'
   done
   print -r -- "${proj_refs%$'\n'}" | wsmark::write "$xcwsfile" PROJECT_REFS
 fi

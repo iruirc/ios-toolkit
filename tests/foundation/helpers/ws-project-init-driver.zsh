@@ -33,10 +33,8 @@ case "$platform" in
     ;;
 esac
 
-proj_name="$(wsyml::get '.project.name' 2>/dev/null || echo "$repo_name")"
-
 cat > "$repo_dir/project.yml" <<EOF
-name: $proj_name
+name: $repo_name
 options:
   bundleIdPrefix: com.example
   deploymentTarget:
