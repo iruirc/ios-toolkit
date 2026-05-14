@@ -24,6 +24,7 @@ Produce output in the sections described in the "Output Structure" section below
 2. **One refactoring at a time.** Small, reviewable, incremental changes.
 3. **Extract, don't rewrite.** Improve what exists rather than starting over.
 4. **Test coverage first.** If the code lacks tests, write them before refactoring so you can verify nothing broke.
+5. **No task/phase/EPIC references in production code comments.** Provenance lives in `git log`, commit message, and PR description — never embed `// EPIC X §Y Phase Z` or `// Task N phase M` markers in the refactored code. See `## Comment Policy` below.
 
 ## Common Refactoring Tasks
 
@@ -67,7 +68,7 @@ When reactive chains are overly complex or hard to read:
 - Break long chains into named intermediate observables/publishers
 - Replace nested `flatMap` with clearer composition
 - Extract complex transformations into pure functions
-- Add comments explaining non-obvious operator choices
+- If an operator choice is non-obvious, add a short evergreen WHY-comment (NOT a task/phase reference — see `## Comment Policy`)
 
 ## Process
 
@@ -120,9 +121,28 @@ Your response MUST be structured with these top-level sections so the orchestrat
 - `## Verification` — how to confirm no behavior change (which tests, which scenarios)
 - `## Risks` — anything that might break despite tests passing
 
+## Comment Policy
+
+- **Default to writing no comments.** Code with descriptive names says WHAT. Only add a comment when the WHY is non-obvious: hidden constraint, subtle invariant, workaround for a specific bug, behavior that would surprise a reader.
+- **Comments must be evergreen.** Encode an invariant that will still be true in two years. Do NOT encode the moment-in-time provenance of the change.
+- **NEVER reference the current task, phase, EPIC, ticket, fix, PR, or caller** in production code comments. Forbidden examples:
+  - `// EPIC 145 §1.6 Phase 5 — canonical media metadata resolver`
+  - `// §1.7 follow-up will replace this`
+  - `// Bug109 fix`, `// Task 042 phase 2`
+  - `// Was X before refactor`, `// Used by Y flow`
+
+  Provenance lives in `git log` / `git blame` / commit message / PR description / `Tasks/` folder. Duplicating it in code rots and adds noise that crowds out the evergreen WHY.
+- **Special case for the Refactor stage:** during a phased refactor it is tempting to drop `// Phase N — …` markers in the touched code to "trace stage to source". DO NOT. The Plan.md per-phase checkboxes + per-phase git commit are the provenance trail.
+- **WHAT-comments are forbidden.** `// increment counter` over `counter += 1` adds zero value. Decorative preludes, history-only notes ("was X before"), forward-promise comments ("will be replaced in a follow-up") — all banned.
+- **File headers** carry evergreen description of the file's role only — no `// Created for EPIC X / Phase Y` lines.
+- **Acceptable comment shapes:**
+  - `/// Canonical media metadata resolver. Invariant: all consumers read the same payload to avoid AVAsset double-load races.`
+  - `// Cancel-order race fix: cancel + nil-assignment MUST happen BEFORE clearActiveProject — otherwise the dangling Task observes a torn state.`
+
 ## What You Never Do
 
 - Add new features under the guise of refactoring
 - Delete tests or change test expectations to make them pass
 - Refactor code that is actively being worked on by others without discussion
 - Make changes that require updating more than one feature module at once (split into phases instead)
+- Embed task/phase/EPIC references in production code comments (see Core Rule 5 + `## Comment Policy`)

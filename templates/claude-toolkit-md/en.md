@@ -17,6 +17,23 @@ en
 - **Long-term value > quick wins.** Pick solutions that scale and remain maintainable.
 - If the user insists on a hacky solution, clearly outline the risks and record them in `Done.md → Objections`.
 
+## Rules
+
+### Comments
+
+- **Default to writing no comments.** Code with descriptive names says WHAT. Only add a comment when the WHY is non-obvious: hidden constraint, subtle invariant, workaround for a specific bug, behavior that would surprise a reader.
+- **Comments must be evergreen** — encode an invariant that will still be true in two years.
+- **NEVER reference the current task, phase, EPIC, ticket, fix, PR, or caller** in production code comments. Forbidden examples: `// EPIC 145 §1.6 Phase 5 — …`, `// Task 042 phase 2`, `// Bug123 fix`, `// Used by Y flow`, `// §1.7 follow-up will replace this`, `// Was X before refactor`. Provenance lives in `git log` / commit message / PR description / `Tasks/` — duplicating it in code rots and crowds out the WHY.
+- **WHAT-comments are forbidden** (e.g. `// increment counter` over `counter += 1`). Decorative preludes, history-only notes, and forward-promise comments are also forbidden.
+- **File headers** carry an evergreen description of the file's role only — no `// Created for EPIC X / Phase Y` lines.
+- The same rule applies to test code: no phase/EPIC refs in test comments OR in `XCTAssert*` / `XCTFail` / `XCTSkip` message strings (those are read in failure output and must be self-explanatory).
+
+### Commits & provenance
+
+- Commit message + PR description carry the WHY of the change.
+- `git log` / `git blame` / `Tasks/<status>/<task_id>/` folder carry the timeline.
+- Production code carries the *current* invariants and constraints — not the journey that led to them.
+
 ## Stack
 
 - UI: <SwiftUI | UIKit | AppKit>
