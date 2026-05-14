@@ -263,6 +263,83 @@ let assembler = Assembler([
 let container = assembler.resolver
 ```
 
+## `@MainActor` UI types + Swinject
+
+Swinject's `Container.register(_:factory:)` takes a **nonisolated** `(Resolver) -> Service` closure. Calling a `@MainActor`-isolated initializer (any `UIViewController`/`NSViewController` subclass on iOS 13+/macOS, or any `@MainActor` ViewModel) from inside that closure is a Swift 6 error:
+
+```
+error: call to main actor-isolated initializer 'init(...)' in a synchronous nonisolated context
+```
+
+### ❌ Wrong — direct registration of `@MainActor` types
+
+```swift
+final class RootAssembly: Assembly {
+    func assemble(container: Container) {
+        // FAILS under Swift 6 — RootViewModel is @MainActor, closure is nonisolated.
+        container.register(RootViewModel.self) { resolver in
+            RootViewModel(appInfo: resolver.resolve(AppInfoService.self)!)
+        }
+        // FAILS — UIViewController.init is @MainActor-isolated by SDK annotation.
+        container.register(RootViewController.self) { resolver in
+            RootViewController(viewModel: resolver.resolve(RootViewModel.self)!)
+        }
+    }
+}
+```
+
+### ❌ Also wrong — `MainActor.assumeIsolated`
+
+```swift
+container.register(RootViewModel.self) { resolver in
+    MainActor.assumeIsolated {              // ← masks the design issue
+        RootViewModel(appInfo: resolver.resolve(AppInfoService.self)!)
+    }
+}
+```
+
+`assumeIsolated` traps at runtime if the closure ever runs off the main actor — and the design intent ("UI is built on main") is hidden from the type system. Keep `assumeIsolated` for true legacy/sync-callback bridges, not for DI wiring you control.
+
+### ✅ Correct — register a `nonisolated` Factory, build UI on main
+
+Register a **plain struct factory** (nonisolated) that holds the `Resolver`; put `@MainActor` on its `make…` method, which constructs the ViewModel and View on the main actor:
+
+```swift
+// Modules/Root/RootFactory.swift
+struct RootFactory {
+    private let resolver: Resolver
+    init(resolver: Resolver) { self.resolver = resolver }
+
+    @MainActor
+    func makeViewController() -> RootViewController {
+        let viewModel = RootViewModel(appInfo: resolver.resolve(AppInfoService.self)!)
+        return RootViewController(viewModel: viewModel)
+    }
+}
+
+// DI/RootAssembly.swift
+final class RootAssembly: Assembly {
+    func assemble(container: Container) {
+        container.register(RootFactory.self) { resolver in
+            RootFactory(resolver: resolver)
+        }
+    }
+}
+
+// Coordinator / AppDelegate (already @MainActor)
+let factory = resolver.resolve(RootFactory.self)!
+let viewController = factory.makeViewController()
+```
+
+**Rules:**
+
+- `*Factory` is a `nonisolated` struct (no `@MainActor` on the type, no `@MainActor` on `init`) — Swinject's closure can build it freely.
+- The `make…` method is `@MainActor` — it's the boundary that crosses into UI isolation, called from `@MainActor` Coordinator / `AppDelegate` / `SceneDelegate`.
+- Register `*Factory` types in Swinject, **not** ViewModels/ViewControllers. Services stay registered directly (they're `nonisolated`).
+- For runtime parameters (`itemId`, `userId`, …) add them as method parameters on `make…`, not as Swinject `arguments:` — keeps the isolation boundary explicit.
+
+This matches the Factory pattern in `di-module-assembly` (`ModuleFactory` + `ModuleComponents`) — that skill explains the full Coordinator wiring; the rule above is just the Swinject-specific contract that lets the two layers compose under Swift 6 concurrency.
+
 ## Coordinator and Module Assembly
 
 Coordinators should **not** receive the Swinject container directly — this creates a Service Locator anti-pattern. Instead, use the Factory pattern described in the `di-module-assembly` skill:
