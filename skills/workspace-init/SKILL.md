@@ -40,7 +40,15 @@ Always print the pre-flight summary first (using `preflight_*` locale keys):
    3. **Do NOT ask stack Q&A here.** swift-init Q&A (UI framework, DI, architecture, async, min-platform) runs per app during execution phase s06b. Interactive `/workspace-init` MUST delegate the full swift-init Q&A for each declared app — do NOT pass `--no-prompt` in interactive mode. Only batch mode (`--from <yml>`) applies stack defaults silently via `swift-init --no-prompt`.
 3. Ask `qa_groups` (Y/N). If Y, repeat-loop: ask `name` + `dir`. Empty `name` ends loop.
 4. Ask `qa_remotes` (text, comma-separated). Split + trim.
-5. Repeat-loop for packages: ask `qa_pkg_name`, `qa_pkg_archetype` (multi-choice), `group` (multi-choice from declared groups, if any), one git URL per declared remote, `qa_pkg_version`, `qa_pkg_deps` (multi-select from declared packages so far), external deps (Y/N → loop), `allowed_deps` (default = archetype rule, override Y/N), `qa_pkg_example_app`. Empty `qa_pkg_name` ends loop. Require ≥ 1 package.
+5. Packages — **iterative loop, ONE package at a time. Do NOT ask "how many packages?" upfront. Do NOT batch multiple package questions into a single prompt.** Each iteration:
+   1. Ask `qa_pkg_name` as a free-text prompt that explicitly tells the user that an empty input ends the loop. The locale string already includes this hint — render it verbatim.
+   2. If the input is empty:
+      - If at least 1 package has been collected so far → exit the loop and continue to step 6.
+      - If 0 packages so far → reprompt (Require ≥ 1 package, per P-rule).
+   3. Otherwise, for THIS package only, ask in sequence: `qa_pkg_archetype` (multi-choice), `group` (multi-choice from declared groups, if any), one git URL per declared remote, `qa_pkg_version`, `qa_pkg_deps` (multi-select from packages declared in PRIOR iterations), external deps (Y/N → nested loop), `allowed_deps` (default = archetype rule, override Y/N), `qa_pkg_example_app`. Record the package.
+   4. **Go back to step 5.i** (ask `qa_pkg_name` again, with the same empty-input-ends hint). The loop has no upper bound; the user keeps adding packages until they enter empty input.
+
+   **Anti-pattern to avoid:** presenting "How many packages?" or "Add 1 / 2 / 3 packages?" as a single multi-choice question and then collecting that many in a fixed batch. Always loop with re-prompts.
 6. Ask defaults overrides (Y/N) for `default_branch`, `push_remotes`, `release_strategy`.
 7. Ask `qa_tasks_enabled` (Y/N, default Y). If Y, ask `qa_tasks_path` (text, default `./Tasks`). Validate path: must NOT be absolute (no leading `/`), must NOT contain `..` segments (avoid escaping workspace-parent). Reprompt on validation failure. Record into `workspace.tasks.enabled` / `workspace.tasks.path`. If N, set `tasks.enabled: false` and skip the path prompt (s09 will skip at execution).
 8. Ask bootstrap (`qa_bootstrap_use_gh`, `qa_bootstrap_push_after_init`, `qa_bootstrap_commit_after_init`). Optional: `initial_commit_message` (default "Initial commit"), `git_author` (text, optional).

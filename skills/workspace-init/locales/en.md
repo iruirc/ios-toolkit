@@ -35,7 +35,7 @@ Use package groups (split packages across subdirs)?
 Top-level remote names (comma-separated, ≥1):
 
 ## qa_pkg_name
-Package name:
+Next package name (leave EMPTY to finish adding packages):
 
 ## qa_pkg_archetype
 Archetype:

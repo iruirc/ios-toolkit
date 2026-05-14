@@ -35,7 +35,7 @@ workspace-init pre-flight:
 Имена top-level remote (через запятую, ≥1):
 
 ## qa_pkg_name
-Имя пакета:
+Имя следующего пакета (ПУСТАЯ строка — завершить добавление пакетов):
 
 ## qa_pkg_archetype
 Архетип:
