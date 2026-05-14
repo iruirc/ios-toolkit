@@ -33,11 +33,9 @@ Always print the pre-flight summary first (using `preflight_*` locale keys):
 1. Ask `qa_workspace_name` (text). Validate against `[A-Za-z][A-Za-z0-9-]*` regex; reprompt on mismatch.
 2. Ask `qa_project_block` (Y/N). If Y:
    1. Ask `qa_project_name` (text). Validate against `[A-Za-z][A-Za-z0-9-]*`; reprompt on mismatch.
-   2. Repeat-loop:
-      - Ask `qa_app_platform` (multi-choice from {`ios`, `macos`, `end`}).
-      - If `end` → exit loop. After loop, validate ≥ 1 app declared.
-      - Otherwise ask `qa_app_repo_name` (text). Default value = `{project-name}-{platform}`. Validate against `[A-Za-z][A-Za-z0-9-]*`.
-   3. **Do NOT ask stack Q&A here.** swift-init Q&A (UI framework, DI, architecture, async, min-platform) runs per app during execution phase s06b. Interactive `/workspace-init` MUST delegate the full swift-init Q&A for each declared app — do NOT pass `--no-prompt` in interactive mode. Only batch mode (`--from <yml>`) applies stack defaults silently via `swift-init --no-prompt`.
+   2. Ask `qa_app_platforms` as a **multi-select** with choices {`ios`, `macos`}. Both options are independent — the user MUST be able to select either, both, or any subset in a single prompt (no synthetic `end` choice, no per-platform repeat-loop). Require ≥1 selection; reprompt if the user submits an empty selection.
+   3. For each selected platform (deterministic order ios → macos): ask `qa_app_repo_name` (text). Default value = `{project-name}-{platform}`. Validate against `[A-Za-z][A-Za-z0-9-]*`.
+   4. **Do NOT ask stack Q&A here.** swift-init Q&A (UI framework, DI, architecture, async, min-platform) runs per app during execution phase s06b. Interactive `/workspace-init` MUST delegate the full swift-init Q&A for each declared app — do NOT pass `--no-prompt` in interactive mode. Only batch mode (`--from <yml>`) applies stack defaults silently via `swift-init --no-prompt`.
 3. Ask `qa_groups` (Y/N). If Y, repeat-loop: ask `name` + `dir`. Empty `name` ends loop.
 4. Ask `qa_remotes` (text, comma-separated). Split + trim.
 5. Packages — **iterative loop, ONE package at a time. Do NOT ask "how many packages?" upfront. Do NOT batch multiple package questions into a single prompt.** Each iteration:

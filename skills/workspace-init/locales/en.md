@@ -86,8 +86,8 @@ Workspace bootstrapped. Next: open {workspace_name}.xcworkspace
 ## qa_project_name
 Project name (used for app target naming):
 
-## qa_app_platform
-Which platform? (or 'end' to stop)
+## qa_app_platforms
+Which platforms? (multi-select; pick one or both: iOS, macOS)
 
 ## qa_app_repo_name
 Repo name for {platform} (default: {default}):
