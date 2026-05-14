@@ -16,8 +16,8 @@ teardown() { ws_cleanup_tmpdirs; }
   [ -d "$parent/FullApp-macOS" ]
   [ -f "$parent/FullApp-iOS/project.yml" ]
   [ -f "$parent/FullApp-macOS/project.yml" ]
-  [ -d "$parent/FullApp-iOS/FullApp-iOS.xcodeproj" ]
-  [ -d "$parent/FullApp-macOS/FullApp-macOS.xcodeproj" ]
+  [ -d "$parent/FullApp-iOS/FullApp.xcodeproj" ]
+  [ -d "$parent/FullApp-macOS/FullApp.xcodeproj" ]
   [ -d "$parent/FullApp-iOS/.git" ]
   [ -d "$parent/FullApp-macOS/.git" ]
   run grep '^## Workspace meta' "$parent/FullApp-iOS/CLAUDE-swift-toolkit.md"
@@ -41,9 +41,9 @@ teardown() { ws_cleanup_tmpdirs; }
     "$(ws_fixture_path workspace-yml/with-project-full.yml)" "$parent" >&2
   local xcws="$parent/FullProj-meta/FullProj.xcworkspace/contents.xcworkspacedata"
   [ -f "$xcws" ]
-  run grep -F 'group:../FullApp-iOS/FullApp-iOS.xcodeproj' "$xcws"
+  run grep -F 'group:../FullApp-iOS/FullApp.xcodeproj' "$xcws"
   [ "$status" -eq 0 ]
-  run grep -F 'group:../FullApp-macOS/FullApp-macOS.xcodeproj' "$xcws"
+  run grep -F 'group:../FullApp-macOS/FullApp.xcodeproj' "$xcws"
   [ "$status" -eq 0 ]
 }
 
@@ -56,7 +56,7 @@ teardown() { ws_cleanup_tmpdirs; }
     "$(ws_fixture_path workspace-yml/with-project-shortform.yml)" "$parent"
   [ "$status" -eq 0 ]
   [ -f "$parent/ShortApp-iOS/project.yml" ]
-  [ -d "$parent/ShortApp-iOS/ShortApp-iOS.xcodeproj" ]
+  [ -d "$parent/ShortApp-iOS/ShortApp.xcodeproj" ]
   [ -d "$parent/ShortApp-iOS/.git" ]
   run yq eval '.packages.A.path' "$parent/ShortApp-iOS/project.yml"
   [ "$output" = "../packages/A" ]
