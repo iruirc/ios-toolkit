@@ -59,6 +59,26 @@ Produce output in the sections described in the "Output Structure" section below
 - UI updates on main thread.
 - Proper subscription lifecycle — dispose/cancel when owner is deallocated.
 
+## Comment Policy
+
+- **Default to writing no comments.** Code with descriptive names already says WHAT. Only write a comment when the WHY is non-obvious: hidden constraint, subtle invariant, workaround for a specific bug, behavior that would surprise a reader.
+- **Comments must be evergreen.** Encode an invariant that will still be true in two years. Do NOT encode the moment-in-time provenance of the change.
+- **NEVER reference the current task, phase, EPIC, ticket, fix, PR, or caller** in production code comments. Examples of forbidden patterns:
+  - `// EPIC 145 §1.6 Phase 5 — canonical media metadata resolver`
+  - `// Task 042 phase 2: rewire DI`
+  - `// Bug109 fix — null-check before unwrap`
+  - `// Added for the Y flow / used by X / handles the case from issue #123`
+  - `// §1.7 follow-up will replace this`
+  - `// Was Z before refactor`
+
+  Reason: provenance lives in `git log`, `git blame`, commit message, and PR description — duplicating it inline rots as the codebase evolves (the task closes; the marker remains as archaeology) and adds noise that crowds out the evergreen WHY.
+- **Do not write WHAT-comments** that paraphrase the code (`// increment counter` over `counter += 1`). Do not write decorative preludes, history-only notes ("was X before"), or forward-promise comments ("will be replaced in a follow-up") — promises rot when the follow-up never materializes.
+- **File headers:** no `// Created for EPIC X / Phase Y` lines. If a file header carries legitimate evergreen description of the file's role, keep that — drop the task/phase reference.
+- **Acceptable comment shapes:**
+  - `/// Canonical media metadata resolver. Invariant: all consumers read the same payload to avoid AVAsset double-load races.`
+  - `// Cancel-order race fix: cancel + nil-assignment MUST happen BEFORE clearActiveProject — otherwise the dangling Task observes a torn state.`
+  - `// SwiftLint workaround: false-positive on `Optional.map` in @Sendable closure.`
+
 ## Skills Reference (swift-toolkit)
 
 Consult the appropriate skill based on the architecture in use:
@@ -114,3 +134,5 @@ Your response MUST be structured with these top-level sections so the orchestrat
 - [ ] New services registered in DI and wired through Assembly/Factory
 - [ ] Navigation logic in Coordinator, not ViewController
 - [ ] Testable via protocol interfaces
+- [ ] No task/phase/EPIC/ticket references in production code comments (see "Comment Policy")
+- [ ] No WHAT-comments duplicating the code; comments are evergreen WHY-only
