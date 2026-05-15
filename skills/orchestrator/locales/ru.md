@@ -41,3 +41,21 @@
 
 ## confirm_dispatch_cancel
 Отмена
+
+## auq_axis_ui_question
+Какой UI-фреймворк использует эта задача?
+
+## auq_axis_async_question
+Какой async-подход использует эта задача?
+
+## auq_axis_di_question
+Какой подход Dependency Injection использует эта задача?
+
+## auq_axis_arch_question
+Какую архитектуру использует эта задача?
+
+## auq_axis_platform_question
+Какую целевую платформу использует эта задача?
+
+## auq_axis_tests_question
+Какой тестовый фреймворк использует эта задача?
