@@ -41,3 +41,21 @@ Yes
 
 ## confirm_dispatch_cancel
 Cancel
+
+## auq_axis_ui_question
+Which UI framework does this task use?
+
+## auq_axis_async_question
+Which async approach does this task use?
+
+## auq_axis_di_question
+Which Dependency Injection approach does this task use?
+
+## auq_axis_arch_question
+Which architecture does this task use?
+
+## auq_axis_platform_question
+Which target platform does this task use?
+
+## auq_axis_tests_question
+Which test framework does this task use?
