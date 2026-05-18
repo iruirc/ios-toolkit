@@ -47,7 +47,7 @@ The minimum viable input is just `task_id`. All other fields are optional and re
 | `action` | enum: `run` / `continue` / `redo` / `restart` / `restart-full` | parsed from the command (see triggers table) | `run` for a bare "run/do/execute N", `continue` for "continue N" |
 | `stage_target` | string (profile stage name) | required for `redo` / `restart`, or for `--from` / `--to` modifiers under `run` | not needed for `run` / `continue` / `restart-full` without modifiers |
 | `mode_override` | enum: `manual` / `auto` | explicit "automatically" / "step-by-step" in the request | resolved from Task.md → CLAUDE-swift-toolkit.md → `manual` |
-| `stack_override` | string | stack explicitly named in the request | resolved from Task.md → CLAUDE-swift-toolkit.md → imports → AskUserQuestion |
+| `stack_override` | string | stack explicitly named in the request | resolved per-axis via stack-detect (see Resolution Algorithm step 4); AUQ only for unresolved needed axes |
 
 **Invariant:** the orchestrator does NOT crash on missing optional fields. It resolves them in the Resolution Algorithm and only then hands the fully populated contract to workflow-*.
 
@@ -114,13 +114,31 @@ Algorithm:
    > CLAUDE-swift-toolkit.md "## Mode"
    > "manual" (default)
 
-4. Resolve stack (priority high→low):
-   stack_override (explicit in the request)
-   > Task.md "## 4. [Stack]"
-   > CLAUDE-swift-toolkit.md "## Modules" (if the task's files fall into one of the listed modules)
-   > CLAUDE-swift-toolkit.md "## Stack"
-   > auto-detection by imports of the affected files
-   > AskUserQuestion (last fallback)
+4. Resolve stack (per-axis; replaces the old monolithic chain):
+   4.0 if stack_override is set (stack explicitly named in the request):
+          stack := stack_override
+          skip to step 5            # explicit override wins, like mode_override
+   4.1 envelope := workflow-<profile> frontmatter `stack_axes_envelope`
+                   (absent → {may: all, never: []})
+   4.2 if envelope.never == all:                       # review, epic
+          stack := raw read of CLAUDE-swift-toolkit.md ## Stack  # ambient info-only
+          # NO chain, NO AUQ, NO stack-detect; skip to step 5
+          # 4.2 is load-bearing: stack-detect returns {} here, not the ambient text
+   4.3 scope := task file scope
+               (Task.md ## 2. [Files] | fallback: plan's affected paths)
+   4.4 {needed, resolved, unresolved} :=
+          Skill stack-detect (task_files=scope, envelope=envelope, task_id=task_id)
+       # stack-detect owns path-mapping (conventions/stack-axis-mapping.md)
+       # + import-scan + per-axis chain; scan runs once
+   4.5 for axis in unresolved:
+          AUQ using locale key `auq_axis_<axis>_question`
+              options := stack-detect Axis Catalog[axis]
+          resolved[axis] := user choice
+       (multiple unresolved → group into one multi-question AUQ form)
+   4.6 cache: upsert Task.md → ## 4. [Stack] with resolved values
+              (AUQ becomes a one-time event per task)
+   4.7 stack := concatenated string of resolved values "v1+v2+v3"
+              (axes not in `needed` / still absent are omitted)
 
 5. Resolve start_stage (depends on action):
    action=run, stage_target=null  → state-detection: first unfinished stage
@@ -168,6 +186,17 @@ Algorithm:
    Example: `run 026 as BUG automatically` — confirmation skipped (both "BUG" and "automatically" are present).
    Example: `run 026` — confirmation required (neither profile nor mode is explicit).
 ```
+
+**Stack resolution (step 4) delegates to `swift-toolkit:stack-detect`.** The
+orchestrator passes `{task_files, envelope, task_id}` and receives
+`{needed, resolved, unresolved}`. `stack-detect` performs no AUQ and writes no
+files — the orchestrator owns the per-axis AUQ (locale keys
+`auq_axis_<axis>_question`, options from the stack-detect Axis Catalog), the
+`Task.md → ## 4. [Stack]` cache write, and concatenated serialization. The
+default path-to-axis mapping lives in `conventions/stack-axis-mapping.md`;
+projects override it via `CLAUDE-swift-toolkit.md → ## Modules`. When
+`envelope.never == all` (review/epic), the project `## Stack` is read raw and
+passed as ambient informational context only — no chain, no AUQ.
 
 **Helper: `stage_picker_options(recommended, profile_stages)`** — deterministic picker, hard cap 4 total options (`AskUserQuestion` option-count limit, observed empirically; exceeding it causes the host CLI to silently truncate).
 

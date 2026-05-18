@@ -51,7 +51,7 @@ Which async approach does this task use?
 ## auq_axis_di_question
 Which Dependency Injection approach does this task use?
 
-## auq_axis_arch_question
+## auq_axis_architecture_question
 Which architecture does this task use?
 
 ## auq_axis_platform_question

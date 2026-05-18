@@ -51,7 +51,7 @@
 ## auq_axis_di_question
 Какой подход Dependency Injection использует эта задача?
 
-## auq_axis_arch_question
+## auq_axis_architecture_question
 Какую архитектуру использует эта задача?
 
 ## auq_axis_platform_question
