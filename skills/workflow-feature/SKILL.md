@@ -4,6 +4,7 @@ description: |
   FEATURE profile workflow: Research → Plan → Execute → Validation → Review → Done. Activated by swift-toolkit:orchestrator; not invoked by the user directly.
   Use when (en): orchestrator dispatches a task with [TASK_TYPE]=FEATURE
   Use when (ru): оркестратор диспетчеризует задачу с [TASK_TYPE]=FEATURE
+stack_axes_envelope: { may: [ui, async, di, architecture, platform, tests], never: [] }
 ---
 
 # Workflow Feature
