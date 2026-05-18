@@ -4,6 +4,7 @@ description: |
   REVIEW profile workflow: a single pass through swift-toolkit:swift-reviewer plus auto-move into DONE/ on APPROVED. Activated by swift-toolkit:orchestrator; not invoked by the user directly.
   Use when (en): orchestrator dispatches a task with [TASK_TYPE]=REVIEW
   Use when (ru): оркестратор диспетчеризует задачу с [TASK_TYPE]=REVIEW
+stack_axes_envelope: { may: [], never: all }
 ---
 
 # Workflow Review
