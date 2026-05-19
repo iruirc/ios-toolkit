@@ -125,7 +125,7 @@ Algorithm:
           # NO chain, NO AUQ, NO stack-detect; skip to step 5
           # 4.2 is load-bearing: stack-detect returns {} here, not the ambient text
    4.3 scope := task file scope
-               (Task.md ## 2. [Files] | fallback: plan's affected paths)
+               (Task.md ## 1. [Files] | fallback: plan's affected paths)
    4.4 {needed, resolved, unresolved} :=
           Skill stack-detect (task_files=scope, envelope=envelope, task_id=task_id)
        # stack-detect owns path-mapping (conventions/stack-axis-mapping.md)
