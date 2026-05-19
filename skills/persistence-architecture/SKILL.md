@@ -5,190 +5,105 @@ description: "Use when designing local data storage in an iOS app — choosing b
 
 # Persistence Architecture
 
-Decisions about **where data lives, how it survives app launches, and how the rest of the app talks to it**. Not a tutorial on Core Data fetch requests — this skill tells you **how to wire any persistence framework into a layered architecture** that survives upgrades, threading, and framework swaps.
+Design the local data layer: where data lives, how it survives app launches, and
+how the rest of the app talks to it. This is an architecture skill, not a Core
+Data tutorial.
 
-> **Related skills:**
-> - `persistence-migrations` — schema migrations (lightweight/heavyweight, NSEntityMigrationPolicy, SwiftData VersionedSchema, GRDB DatabaseMigrator), transformable Codable payload evolution, progressive chains, long-migration UX, failure recovery, fixture tests
-> - `arch-clean`, `arch-mvvm`, `arch-viper` — which layer the persistence layer reports into
-> - `error-architecture` — error mapping at the storage boundary, conflict resolution, recoverable vs fatal classification
-> - `net-architecture` — pairing remote source + local cache (offline-first, sync, ETag/conditional GET)
-> - `di-composition-root` — where `ModelContainer` / `NSPersistentContainer` / `DatabasePool` are bootstrapped (singleton scope)
-> - `di-module-assembly` — registering Repository implementations into feature modules
-> - `reactive-combine`, `reactive-rxswift` — bridging persistence queries into reactive pipelines
-> - `pkg-spm-design` — when extracting persistence into its own SPM package (and what the public surface should be)
-> - `concurrency-architecture` — Repository façade stays `nonisolated`; backing context confinement (`viewContext` / `@ModelActor` / `DatabasePool` / Realm thread-confinement) is a per-framework concern; cross-context object passing (always by `NSManagedObjectID` / `PersistentIdentifier`, never by reference)
+Detailed examples and framework-specific code live in
+`references/detailed-guide.md`. Load that reference only for the section you
+need; use `rg -n "^## "` or the section names below.
 
-## Why This Skill Exists
+## When To Load The Reference
 
-Without an architecture, persistence code drifts into:
+Read `references/detailed-guide.md` selectively:
 
-- **`NSManagedObject` in the ViewModel** — UI binds to thread-confined Core Data objects; one async fetch and you crash with `NSObjectInaccessibleException`.
-- **One context for everything** — main-thread `viewContext` does writes too; UI hangs for 400ms during sync.
-- **Schema migration roulette** — version 3 ships, half the users get `Cannot create NSManagedObjectModel: model is not loadable` on launch.
-- **`UserDefaults` as a database** — 5MB of JSON in a single key, synchronous I/O on every read, lost on iCloud restore in some cases.
-- **No Repository boundary** — `NSFetchRequest` literals scattered across 40 files; replacing Core Data with SwiftData requires touching every screen.
-- **Thread-confined objects crossing actors** — Realm object captured in a `Task`, accessed on the wrong thread → silent data corruption or crash.
-- **No backups before destructive migration** — heavyweight migration fails for one user → data gone, no recovery path.
-
-Fix: **a typed Repository boundary returning Domain models, framework hidden behind it, contexts/threading owned by the persistence layer, migrations versioned and tested.**
-
-## Layering
-
-```
-View / ViewModel              ← never imports CoreData / SwiftData / GRDB / Realm
-        │
-        ▼
-Repository (Domain in/out, framework hidden inside)
-        │
-        ▼
-Storage primitive (NSPersistentContainer / ModelContainer / DatabasePool / Realm)
-        │
-        ▼
-Disk (sqlite file / Realm file / .plist / files)
-```
-
-**Rules:**
-
-- **ViewModel/UseCase imports only Domain types.** Never `import CoreData` outside the persistence layer.
-- **Repository owns mapping** Domain ↔ Storage entity, plus error mapping. See `error-architecture`.
-- **Container/pool is a singleton** registered in Composition Root (`scope = .container`). Never created on demand.
-- **Domain models are value types (`struct`).** They are snapshots — not references to live database rows.
-
-> **Note on a separate DataSource layer.** Some projects split Repository (Domain-facing) from DataSource (framework-facing) when one Repository combines multiple sources (network + local). For pure local persistence the two collapse into one — the rest of this skill assumes that case. If you need the split, the rules above apply to the DataSource: it owns the framework, Repository owns mapping into the same Domain types.
-
-## Choosing the Framework
-
-There is no universal answer. Match storage to the **shape of the data and the access pattern**, not to fashion.
-
-| Framework | Strengths | Weaknesses | Choose when |
-|---|---|---|---|
-| **Core Data** | Mature, Apple-supported, `NSFetchedResultsController`, CloudKit sync via `NSPersistentCloudKitContainer`, lightweight migrations free for many changes | Verbose, NSManagedObject is thread-confined and reference-typed, KVO-based (gotchas with Swift Concurrency), schema in `.xcdatamodeld` editor | Large relational graph, iOS 13+ deployment target, need CloudKit sync, willing to wrap NSManagedObject behind Repository |
-| **SwiftData** | Modern Swift API (`@Model`, `@Query`), value-like ergonomics, `@ModelActor` for background work, integrated with SwiftUI, CloudKit support | iOS 17+ only, immature (bugs, migration tooling thin), `@Query` re-runs on any model change, schema reflection has edge cases | iOS 17+ only, SwiftUI app, simple-to-medium relational model, willing to live on the bleeding edge |
-| **GRDB (SQLite)** | Direct SQL when you need it, `ValueObservation` for reactive queries, fast, full control over schema/indexes, easy migrations via `DatabaseMigrator`, sync API + async wrappers | No CloudKit out of the box, you write your own sync, manual relationship handling | Performance-critical, complex queries (`JOIN`/`GROUP BY`), need precise SQL, no Apple-sync requirement, want value semantics |
-| **Realm** | Cross-platform (iOS+Android), live objects auto-update, MongoDB Atlas Device Sync | Thread-confined live objects (footgun), proprietary format, ownership uncertainty since MongoDB acquisition | Cross-platform code sharing, existing MongoDB Atlas backend |
-| **UserDefaults** | Trivial API, automatically persisted | Sync I/O, 4KB practical limit per key, no querying, NOT for sensitive data | Simple flags, last-selected-tab, onboarding-shown bool |
-| **Plain files (`FileManager`)** | Zero ceremony, full control, easy to inspect | No querying, no transactions, manual concurrency | Documents the user owns (exports, downloads, attachments), large blobs (images, video) |
-| **Keychain** | Encrypted, survives reinstall (configurable), iCloud-syncable | Slow, small values only, awkward API | Tokens, passwords, encryption keys — see `swift-security` audit checklist |
-
-**Decision shortcut:**
-
-- **Big relational + CloudKit + iOS 13+** → Core Data
-- **iOS 17+ SwiftUI greenfield, simple model** → SwiftData
-- **Performance / complex SQL / control freak** → GRDB
-- **Just a flag** → UserDefaults
-- **Just a file** → `FileManager` + `NSFileProtectionComplete`
-- **A secret** → Keychain (never UserDefaults)
-
-Mixing is normal: GRDB for the main store + UserDefaults for flags + Keychain for tokens + files for downloaded media. Don't put media blobs in Core Data — `external storage` or no, the database file balloons.
-
-> **On Realm:** coverage in this skill is intentionally minimal beyond migration and threading specifics. For new projects prefer Core Data / SwiftData / GRDB; the Realm sections here exist for maintenance of existing projects.
-
-## Schema Design
-
-Decisions you make once, regret for years if wrong.
-
-- **Identity** — use `UUID` (or server-issued ID) as primary key, generated at insertion time. Never rely on auto-increment integers if data ever syncs across devices.
-- **Timestamps** — `createdAt` and `updatedAt` on every entity. `updatedAt` enables conflict resolution and incremental sync.
-- **Soft delete** — for any data the user can «delete» but might want back, store `deletedAt: Date?` instead of removing the row. CloudKit sync, undo, and audit trails depend on it. Filter `deletedAt == nil` at the Repository boundary so callers don't see deleted rows.
-- **Indexes** — every column that appears in `WHERE` or `ORDER BY` of a hot query. Profile with the framework's query plan tool before adding speculatively.
-- **Relationships** — Core Data and Realm love object graphs; GRDB encourages explicit foreign keys + JOINs. Pick one mental model per project.
-- **Denormalization** — fine for read-heavy fields you'd otherwise compute every render (e.g., `commentCount` on a `Post`). Update in the same transaction as the source.
-- **Enums as raw strings, not integers** — strings survive reordering, enable schema introspection, and don't break when you insert a new case.
-- **Dates as native types, not formatted strings** — store `Date` (Core Data / SwiftData) or ISO 8601 via `ISO8601DateFormatter` (GRDB / blob). Never format with locale-dependent `DateFormatter` — user's locale change garbles all timestamps.
-
-### Nested Types: Separate Entity vs Transformable Attribute
-
-A recurring decision in Core Data / SwiftData / Realm: a domain type has a non-trivial nested value (`TrackBorder`, `MediaTime`, `Sequence`, `Address`). Two ways to store it:
-
-- **Separate entity** with its own table and a relationship — `CDTrack → CDLocation`.
-- **Transformable / Binary attribute** — the nested value is JSON-encoded into a `Data` blob inside the parent row.
-
-Both are valid. **«Never use Codable in Core Data»** is wrong as a rule — Core Data ships transformable attributes precisely so you don't have to model every value type as an entity. The decision is by checklist:
-
-| Pull toward separate entity | Pull toward transformable Data |
+| Need | Reference sections |
 |---|---|
-| Has identity (own `uuid`, referenced from outside) | Pure value type, no identity |
-| Searchable / filterable through SQL/predicate | No need to query inner fields |
-| Indexed columns (used in `WHERE` / `ORDER BY`) | Not part of any hot query |
-| Mutated independently of the parent | Always mutated together with the parent |
-| Has outgoing relationships to other entities | Leaf node — no outgoing edges |
-| Shared between parents (deduplicated) | One per parent, never shared |
-| Large (KBs+) and read selectively | Small (tens to hundreds of bytes) |
+| Pick Core Data / SwiftData / GRDB / Realm / files | `Choosing the Framework`, `Storage Location and Sharing` |
+| Model identities, timestamps, soft deletes, transformable values | `Schema Design` |
+| Write repository implementations | `The Repository Boundary`, `Threading and Contexts`, `Sendable and Swift Concurrency` |
+| Design transactions, child collection updates, conflicts | `Repository Write Patterns` |
+| Add observations / reactive lists | `Querying and Reactivity` |
+| Plan migrations | `Migrations`; then switch to `persistence-migrations` |
+| Add CloudKit / offline sync | `CloudKit and Sync`, `Persistent History Tracking (Core Data)` |
+| Protect sensitive local data | `Encryption and File Protection` |
+| Wire persistence into DI | `Dependency Injection` |
+| Reduce mapper boilerplate | `Generic Mappers — What's Universal, What Isn't` |
+| Test repositories and concurrency | `Testing` |
 
-If most checks land on the right column → transformable Data. If even one important check lands on the left (especially identity or query-ability) → separate entity. Hybrid is normal: a project usually has both.
+## Core Decision
 
-### Trade-offs of transformable Codable attributes
+Use a Repository boundary:
 
-Cheap to introduce, but they have specific failure modes you must own:
-
-1. **Schema drift inside the blob** — Core Data sees only bytes; renaming/removing/retyping a Codable field silently breaks decode for all existing rows. See `persistence-migrations` / *Migrating transformable Codable payloads* for the four mitigation approaches.
-2. **Not searchable via predicate** — `predicate = NSPredicate(format: "sequence.startBeat == %d", ...)` returns nothing useful. Decoding the blob in memory just to filter defeats the purpose of a database.
-3. **Whole-blob writes** — touching one inner field rewrites the entire payload. Fine at tens of bytes, slow at hundreds of KB.
-4. **No referential integrity** — if the blob holds an `id` of another entity, the database can't enforce the foreign key.
-5. **NSSecureCoding** — Apple requires secure unarchiving since iOS 12. The cleanest path with Codable is to use a **Binary Data** attribute (not transformable) and do `JSONEncoder` / `JSONDecoder` yourself in the mapper — no `ValueTransformer` registration, no NSSecureCoding gymnastics.
-
-### Anti-patterns at both extremes
-
-- **Entity for every value type** — the «proper Core Data» tutorial trap. You end up with 30 tables, multi-level JOINs on every fetch, N+1 deletes/inserts on every save, and per-table migrations to keep in sync. Often these entities have no identity, no shared usage, no queries — they're just bureaucracy.
-- **One mega-blob for everything** — store `Project` as a single Codable JSON in one row. No partial updates, no concurrent writes, no queries, migrations are total-rewrite. Works for a draft / prototype; fails the moment two screens edit the same project.
-
-The healthy answer is **a deliberate hybrid**: separate entities for things with identity / queries / sharing, transformable Data for leaf value types.
-
-## Storage Location and Sharing
-
-### Where the database file lives
-
-iOS gives you four directories with very different semantics. Pick the wrong one and you get backed-up gigabytes, mid-session deletions, or broken iCloud quota.
-
-| Directory | Backed up to iCloud / iTunes? | iOS may delete? | Use for |
-|---|---|---|---|
-| `Documents/` | ✅ Yes, **visible to user via Files** | No | User-owned content (exported videos, downloaded attachments) — **NOT** the app's primary DB |
-| `Library/Application Support/<bundle-id>/` | ✅ Yes, hidden from user | No | **Main DB location.** Core Data / GRDB / Realm files belong here. |
-| `Library/Caches/` | ❌ No | ✅ Under memory pressure | Caches that can be re-fetched (image thumbnails, derived assets) |
-| `tmp/` | ❌ No | ✅ Anytime | Truly ephemeral (download in progress) |
-
-```swift
-let supportURL = try FileManager.default.url(
-    for: .applicationSupportDirectory,
-    in: .userDomainMask,
-    appropriateFor: nil,
-    create: true
-)
-let storeURL = supportURL.appendingPathComponent("Model.sqlite")
+```
+View / ViewModel
+      |
+      v
+Repository (Domain in/out, persistence framework hidden)
+      |
+      v
+Storage primitive (NSPersistentContainer / ModelContainer / DatabasePool / Realm)
+      |
+      v
+Disk
 ```
 
-**Common bug:** Xcode's Core Data template puts the store in `Documents` by default. For a video editor, music app, anything with sizeable local data, this means the user's iCloud quota gets eaten by your DB and the file shows up in the Files app. Move to `Application Support` from day one.
+Rules:
 
-### Sharing data with App Extensions, Widgets, Watch app
+- ViewModels and UseCases import Domain types only. They do not import CoreData,
+  SwiftData, GRDB, or Realm.
+- Repositories return Domain value snapshots (`struct`, `Sendable`), not
+  `NSManagedObject`, `@Model`, Realm `Object`, or SQL records.
+- The persistence layer owns mapping, threading/context rules, and error
+  mapping.
+- The container/pool is created once in the Composition Root and registered as a
+  process-wide singleton.
+- Framework-specific objects never cross actor/thread boundaries. Pass IDs
+  (`NSManagedObjectID`, `PersistentIdentifier`, UUID/server ID) or Domain
+  snapshots.
 
-When more than the main app process needs the same store (Share Extension importing media, Widget reading current state, Watch Connectivity sync), put the file in an **App Group container**:
+## Framework Choice
 
-1. Add an App Group capability in Xcode for the main app target AND every extension that needs the data (`group.com.example.app`).
-2. Put the store inside the group container:
+Pick the framework by data shape and access pattern:
 
-```swift
-let groupURL = FileManager.default
-    .containerURL(forSecurityApplicationGroupIdentifier: "group.com.example.app")!
-let storeURL = groupURL.appendingPathComponent("Model.sqlite")
-```
+- Core Data: large relational graph, iOS 13+, CloudKit integration, mature
+  tooling.
+- SwiftData: iOS 17+ SwiftUI greenfield, simple-to-medium model, acceptable
+  newer-tooling risk.
+- GRDB/SQLite: performance, explicit SQL, complex queries, precise migration
+  control, custom sync.
+- Realm: mostly existing projects or cross-platform/Atlas commitments; be strict
+  about live-object thread confinement.
+- UserDefaults: small preferences and flags only.
+- Files: user-owned documents, media, attachments, exports.
+- Keychain: tokens, secrets, encryption keys.
 
-3. Use the same `storeURL` from both the main app and the extension.
+Mixing stores is normal: database for records, files for blobs, UserDefaults for
+flags, Keychain for secrets.
 
-Caveats:
+## Schema Rules
 
-- **Multiple processes hitting the same SQLite file** can corrupt it without proper coordination. Core Data handles cross-process notifications **only** if you enable Persistent History Tracking — see the dedicated section below. GRDB uses SQLite WAL mode by default — concurrent reads safe, concurrent writes serialised.
-- **Schema migrations across processes** — the extension may launch first after install/update and trigger migration. The main app on next launch will see an already-migrated store. Migration logic must be idempotent. See `persistence-migrations` / *Cross-process migration*.
-- **App Group container survives uninstall** in some configurations on iCloud — different from the main bundle's Documents.
+- Use stable IDs (`UUID` or server-issued ID). Avoid auto-increment IDs for data
+  that may sync.
+- Add `createdAt` and `updatedAt`; add `deletedAt` for soft deletes where sync,
+  undo, or audit matters.
+- Index columns used in hot `WHERE` / `ORDER BY` queries after measuring.
+- Store enums as raw strings, not integers.
+- Store dates as native date values or ISO 8601, never locale-formatted strings.
+- Use separate entities for nested values with identity, queryability,
+  relationships, sharing, or independent mutation.
+- Use transformable/binary Codable payloads for small leaf value types that are
+  not queried and always mutate with the parent.
 
-## The Repository Boundary
+## Repository Contracts
 
-Repository is the **only** type the rest of the app sees. Its method signatures use Domain types and `throws`/`Result`. Never returns framework objects.
+Repository method signatures use Domain types:
 
 ```swift
 public protocol ItemRepository {
     func fetch(id: Item.ID) async throws -> Item?
     func list(filter: ItemFilter) async throws -> [Item]
-    func observe(filter: ItemFilter) -> AsyncStream<[Item]>   // reactive variant
+    func observe(filter: ItemFilter) -> AsyncStream<[Item]>
     func upsert(_ item: Item) async throws
     func delete(id: Item.ID) async throws
 }
@@ -198,995 +113,124 @@ public struct Item: Identifiable, Sendable, Equatable {
     public var title: String
     public var createdAt: Date
     public var updatedAt: Date
-    public var isArchived: Bool
 }
 ```
 
-**Why Domain `struct`, not `NSManagedObject` / `@Model` / Realm `Object`:**
-
-- **Sendable across actors** — value types cross isolation safely. See *Sendable and Swift Concurrency*.
-- **Snapshot semantics** — caller sees the data as it was at fetch time; later DB writes don't mutate it under their feet.
-- **No accidental persistence** — caller cannot save changes by mutating a property; the only write path is `upsert(_:)`.
-- **Framework-swappable** — replacing Core Data with GRDB doesn't change a single ViewModel.
-
-The Repository internally maps Storage → Domain on read and Domain → Storage on write. Mappers are pure functions, easy to unit-test.
-
-### Core Data implementation
-
-```swift
-extension NSPersistentContainer {
-    func performBackgroundTask<T>(
-        _ block: @escaping (NSManagedObjectContext) throws -> T
-    ) async throws -> T {
-        try await withCheckedThrowingContinuation { continuation in
-            performBackgroundTask { context in
-                do {
-                    let value = try block(context)
-                    continuation.resume(returning: value)
-                } catch {
-                    continuation.resume(throwing: error)
-                }
-            }
-        }
-    }
-}
-
-final class CoreDataItemRepository: ItemRepository {
-    private let container: NSPersistentContainer
-
-    func fetch(id: Item.ID) async throws -> Item? {
-        try await container.performBackgroundTask { ctx in
-            let req = ItemEntity.fetchRequest()
-            req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
-            req.fetchLimit = 1
-            guard let entity = try ctx.fetch(req).first else { return nil }
-            return Self.toDomain(entity)
-        }
-    }
-
-    private static func toDomain(_ entity: ItemEntity) -> Item {
-        Item(
-            id: entity.id,
-            title: entity.title,
-            createdAt: entity.createdAt,
-            updatedAt: entity.updatedAt,
-            isArchived: entity.isArchived
-        )
-    }
-}
-```
-
-### SwiftData implementation
-
-The same shape via `@ModelActor` — the actor owns its `ModelContext`, callers get pure value snapshots:
-
-```swift
-@ModelActor
-actor SwiftDataItemRepository: ItemRepository {
-    func fetch(id: Item.ID) async throws -> Item? {
-        let descriptor = FetchDescriptor<ItemEntity>(
-            predicate: #Predicate { $0.id == id }
-        )
-        guard let entity = try modelContext.fetch(descriptor).first else { return nil }
-        return Self.toDomain(entity)
-    }
-
-    nonisolated private static func toDomain(_ entity: ItemEntity) -> Item {
-        Item(id: entity.id, title: entity.title, createdAt: entity.createdAt,
-             updatedAt: entity.updatedAt, isArchived: entity.isArchived)
-    }
-}
-```
-
-### GRDB implementation
-
-Native value semantics — no actor needed since `DatabasePool` already serialises writes:
-
-```swift
-final class GRDBItemRepository: ItemRepository {
-    private let dbPool: DatabasePool
-
-    func fetch(id: Item.ID) async throws -> Item? {
-        try await dbPool.read { db in
-            try ItemRecord.filter(Column("id") == id).fetchOne(db).map(Self.toDomain)
-        }
-    }
-
-    private static func toDomain(_ record: ItemRecord) -> Item { ... }
-}
-```
-
-## Threading and Contexts
-
-This is where most persistence bugs live. The rules differ by framework — pick the right model and stay inside it.
-
-### Core Data
-
-- **`viewContext`** — main-actor, read-only by convention. Used for `NSFetchedResultsController` powering UI lists.
-- **`performBackgroundTask`** — every write goes through a fresh background context. Save → automatic merge into `viewContext` (set `automaticallyMergesChangesFromParent = true` on viewContext).
-- **Never share an `NSManagedObject` across contexts.** Pass `NSManagedObjectID`, re-fetch on the other side.
-- **Never `await` while holding a context block** — the `perform` block must complete synchronously inside the closure.
-
-```swift
-container.viewContext.automaticallyMergesChangesFromParent = true
-container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
-```
-
-### SwiftData
-
-- **`ModelContainer`** — created once, singleton.
-- **`ModelContext`** — one per actor. The main-actor context is `container.mainContext`; create others with `ModelContext(container)` inside an actor.
-- **`@ModelActor`** — the modern way to do background writes:
-
-```swift
-@ModelActor
-actor ItemBackgroundStore {
-    func upsert(_ items: [Item]) throws {
-        for item in items {
-            modelContext.insert(ItemEntity(from: item))
-        }
-        try modelContext.save()
-    }
-}
-```
-
-- **`@Query` in SwiftUI** — runs on the main context, re-fires on any insert/update/delete to the model type. For detail screens, prefer manual `FetchDescriptor` + `@State` so unrelated writes don't re-render.
-
-### GRDB
-
-- **`DatabasePool`** — concurrent reads + serialised writes. Use this in production.
-- **`DatabaseQueue`** — strict serialisation. Use for testing or constrained environments.
-- **Reads** — `dbPool.read { db in ... }` (sync) or `try await dbPool.read { ... }`.
-- **Writes** — `try dbPool.write { db in ... }` is serialised automatically.
-
-```swift
-let pool = try DatabasePool(path: url.path, configuration: config)
-try pool.write { db in
-    try ItemRecord(id: item.id, title: item.title).insert(db)
-}
-```
-
-### Realm
-
-- **Live objects are thread-confined.** Never capture a Realm `Object` in a `Task` and access it elsewhere.
-- **Cross threads via `freeze()`** — produces an immutable snapshot safe to read anywhere.
-- **Writes** — `try realm.write { realm.add(entity, update: .modified) }` on the thread that owns the Realm instance.
-
-## Sendable and Swift Concurrency
-
-The Domain layer of this skill leans on Sendable `struct`s, but the framework side does not naturally cooperate. Three things to know.
-
-### Domain models must be Sendable
-
-Repository methods cross actor isolation (`fetch` from `@MainActor` ViewModel into a background actor and back). Domain types must be Sendable, otherwise Swift 6 / strict concurrency rejects the call.
-
-```swift
-public struct Item: Identifiable, Sendable, Equatable {
-    public let id: UUID
-    public var title: String
-    public var createdAt: Date           // ✅ Sendable
-    public var url: URL                  // ✅ Sendable
-    public var attributes: [String: String]  // ✅ Sendable element type
-    public var image: UIImage            // ❌ NOT Sendable — store as Data / URL instead
-}
-```
-
-**Rule:** no UIKit / AppKit reference types in Domain models. If you have an image preview, store `Data` or `URL` and convert to `UIImage` at the UI layer.
-
-### NSManagedObject is NOT Sendable
-
-Period. It's reference-typed and context-confined. Even if you mark your subclass `@unchecked Sendable` to silence the compiler, accessing it from the wrong queue still crashes.
-
-The Repository pattern protects you: `NSManagedObject` lives only inside `performBackgroundTask` blocks, never escapes as a return value. The mapping `entity → Item snapshot` happens inside the block; only the snapshot crosses the boundary.
-
-If you absolutely must hand a managed-object reference to another actor, pass the **`NSManagedObjectID`** (which IS Sendable) and re-fetch on the other side via `existingObject(with:)`.
-
-### SwiftData under Swift 6 strict concurrency
-
-`@Model` instances are also context-confined — SwiftData enforces this through `ModelContext` actor isolation. Two consequences:
-
-1. **`@ModelActor`-generated actor** is the canonical pattern for background work — its `modelContext` is isolated to that actor automatically. The Repository implementation example above uses this.
-2. **`PersistentIdentifier`** (the SwiftData equivalent of `NSManagedObjectID`) IS Sendable — pass it across actors, re-fetch on the other side:
-
-```swift
-let id: PersistentIdentifier = await store.findTrendingItemID()
-let entity: ItemEntity? = await mainStore.modelContext.model(for: id) as? ItemEntity
-```
-
-Don't pass `@Model` instances themselves — pass identifiers.
-
-### Reactive streams across actors
-
-If your Repository returns `AsyncStream<[Item]>` and the underlying observation runs on a background actor, the `[Item]` values must be Sendable to cross the boundary — which they already are if you followed the Domain-struct rule. No extra work.
-
-## Persistent History Tracking (Core Data)
-
-Without this enabled, the following silently fail:
-
-- **Multi-process updates** — Share Extension writes to the store; the main app on next launch doesn't see the changes.
-- **Background URLSession completing** — your handler updates Core Data; UI on next foreground doesn't refresh.
-- **CloudKit sync** — `NSPersistentCloudKitContainer` requires history tracking; without it, sync is inconsistent or broken.
-
-Enable it on the store description, before loading:
-
-```swift
-let description = container.persistentStoreDescriptions.first!
-description.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
-description.setOption(true as NSNumber,
-                     forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey)
-```
-
-Then react to remote changes:
-
-```swift
-NotificationCenter.default.addObserver(
-    forName: .NSPersistentStoreRemoteChange,
-    object: container.persistentStoreCoordinator,
-    queue: nil
-) { _ in
-    container.viewContext.perform {
-        container.viewContext.refreshAllObjects()
-    }
-}
-```
-
-**Truncate history periodically** — the history table grows unbounded otherwise. Apple recommends `deleteHistory(before:)` weekly:
-
-```swift
-let request = NSPersistentHistoryChangeRequest.deleteHistory(
-    before: Date().addingTimeInterval(-7 * 24 * 3600)
-)
-try ctx.execute(request)
-```
-
-If you skip truncation, the history table can reach gigabytes over months.
-
-> The standard `NSManagedObjectContextDidSave` / `NSManagedObjectContextObjectsDidChange` notifications fire **only within a single coordinator instance** — they don't cross processes or even fire across separate `NSPersistentContainer`s in the same process. Persistent History Tracking is the only correct mechanism for cross-process change propagation.
-
-## Repository Write Patterns
-
-Reads are the easy half. Writes are where most subtle bugs live: silent failures, half-applied transactions, child-collection drift, conflict races. Treat each write method as a transaction-shaped contract.
-
-### `upsert` is the default, not separate `create` + `update`
-
-Splitting writes into `create` / `update` forces every caller to know whether the row already exists — and the answer races with concurrent writers. Prefer one `upsert(_:)` that does the right thing inside a single transaction:
-
-```swift
-func upsert(_ item: Item) async throws {
-    try await container.performBackgroundTask { ctx in
-        let req = ItemEntity.fetchRequest()
-        req.predicate = NSPredicate(format: "id == %@", item.id as CVarArg)
-        req.fetchLimit = 1
-
-        let entity = try ctx.fetch(req).first ?? ItemEntity(context: ctx)
-        Self.fill(entity, from: item)
-
-        try ctx.save()                 // ← throw propagates to caller
-    }
-}
-```
-
-**Rules:**
-
-- The fetch + decision + save **must be in the same transaction block.** A `fetch` outside the block followed by a `save` inside is a TOCTOU race — between fetch and save, another writer can insert the same id, you crash on unique-constraint violation.
-- **Do not silently `try?` the save.** If save fails, the caller must learn. See *Anti-pattern: silent write failure* below.
-- **Mapping happens inside the transaction** for Core Data / Realm — child mappers may need the transaction/context to allocate child entities.
-
-### Updating child collections — diff, don't delete-and-recreate
-
-A common shortcut in Core Data / Realm code: when saving a parent, delete all children and recreate them. It «works», but:
-
-- N delete + N insert per save → slow at 50+ children, painful at 500+.
-- Persistent IDs of unchanged children are lost (breaks anything that referenced them: tombstones, sync, undo history).
-- CloudKit sync sees N deletes + N inserts as N×2 sync events instead of K updates for K actually-changed rows.
-- Atomicity is fragile — if the transaction fails mid-save, you may end up with a parent that has no children.
-
-Diff by stable ID instead:
-
-```swift
-func upsertContainer(_ model: PlainContainerVideoTracks, in entity: CDContainer, ctx: NSManagedObjectContext) {
-    let existing = Dictionary(uniqueKeysWithValues:
-        (entity.tracks?.allObjects as? [CDVideoTrack] ?? []).map { ($0.uuid, $0) }
-    )
-    let incoming = Dictionary(uniqueKeysWithValues: model.tracks.map { ($0.uuid, $0) })
-
-    let toDelete = existing.keys.subtracting(incoming.keys)
-    let toInsert = incoming.keys.subtracting(existing.keys)
-    let toUpdate = existing.keys.intersection(incoming.keys)
-
-    for id in toDelete { ctx.delete(existing[id]!) }
-    for id in toInsert { fillNewTrack(ctx: ctx, parent: entity, model: incoming[id]!) }
-    for id in toUpdate { fillExistingTrack(existing[id]!, from: incoming[id]!) }
-}
-```
-
-For GRDB this is a non-issue — you write the SQL `UPDATE` / `DELETE WHERE id IN (...)` directly. For SwiftData the diff is similar to Core Data but using `FetchDescriptor` + insert/delete on the context.
-
-### Atomicity
-
-Normal Repository write methods should commit or roll back as a unit — no
-half-saved entities visible to readers. Use the framework primitive:
-
-| Framework | Transaction primitive |
-|---|---|
-| Core Data | One `performBackgroundTask` block — single `save()` at the end. If it throws, nothing was persisted. |
-| SwiftData | `try modelContext.save()` after a series of `insert/delete`. Same all-or-nothing. |
-| GRDB | `try dbPool.write { db in ... }` is a single SQL transaction. |
-| Realm | `try realm.write { ... }` block. |
-
-**Never** do:
-
-```swift
-try ctx.save()             // first save
-mapper.attachChild(...)    // do more work
-try ctx.save()             // second save  ← intermediate state visible between saves
-```
-
-If you need to compose smaller operations into a larger atomic write, use one transaction and call helper functions inside it that take the context/transaction as a parameter.
-
-### Partial updates (delta) vs full writes
-
-For frequently-changing single fields (e.g. `lastViewedAt` ticked on every screen open), do a targeted update — don't round-trip the whole aggregate:
-
-```swift
-func touchLastViewed(id: Item.ID, at date: Date) async throws {
-    try await container.performBackgroundTask { ctx in
-        let req = ItemEntity.fetchRequest()
-        req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
-        req.fetchLimit = 1
-        guard let entity = try ctx.fetch(req).first else { return }
-        entity.lastViewedAt = date
-        try ctx.save()
-    }
-}
-```
-
-This is faster (no mapping of unchanged fields) and **avoids accidental rollback of concurrent edits** — full upsert of a stale snapshot can clobber another writer's concurrent change to a different field.
-
-For GRDB use `UPDATE ... SET column = ?`. For SwiftData mutate the property on the fetched `@Model` and call `save()`.
-
-### Batch writes
-
-Bulk inserts/updates split into two contracts:
-
-- **All-or-nothing bulk write** — one transaction, one save. Use when callers
-  expect the whole operation to succeed or fail as a unit.
-- **Resumable import / sync** — chunked transactions. Use when progress matters
-  more than all-or-nothing semantics, and document that readers may observe
-  chunk-level progress.
-
-Chunked imports keep memory bounded and progress visible, but they are **not**
-atomic Repository writes:
-
-```swift
-func importManyInBatches(_ items: [Item], batchSize: Int = 200) async throws {
-    for chunk in items.chunked(into: batchSize) {
-        try await container.performBackgroundTask { ctx in
-            for item in chunk {
-                let entity = try fetchOrCreate(id: item.id, in: ctx)
-                fill(entity, from: item)
-            }
-            try ctx.save()
-            ctx.refreshAllObjects()    // free memory between batches
-        }
-    }
-}
-```
-
-GRDB has `try Item.insertMany(db, ...)`. Core Data has `NSBatchInsertRequest` / `NSBatchUpdateRequest` — fast, but they bypass the validation/derived-attribute path; use only for cold imports.
-
-### `delete` and cascade
-
-Cascade rules belong in the **schema**, not in the Repository:
-
-- Core Data: set `Delete Rule = Cascade` on the relationship in the model editor. Then `ctx.delete(parent)` automatically removes children.
-- SwiftData: `@Relationship(deleteRule: .cascade)`.
-- GRDB: `ON DELETE CASCADE` in the foreign-key declaration.
-- Realm: cascade is manual — use `List` and delete children explicitly inside the write block.
-
-Repository method stays trivial:
-
-```swift
-func delete(id: Item.ID) async throws {
-    try await container.performBackgroundTask { ctx in
-        let req = ItemEntity.fetchRequest()
-        req.predicate = NSPredicate(format: "id == %@", id as CVarArg)
-        for entity in try ctx.fetch(req) { ctx.delete(entity) }
-        try ctx.save()
-    }
-}
-```
-
-For synced data prefer **soft delete** — see *Schema Design / Soft delete*.
-
-### Optimistic concurrency
-
-If two devices (or two screens) can edit the same record, naïve last-write-wins silently loses data. Add a `version: Int` field, bump it inside the same transaction as the upsert, throw `RepositoryError.conflict` on mismatch:
-
-```swift
-if let existing = try ctx.fetch(req).first {
-    guard existing.version == item.expectedVersion else {
-        throw RepositoryError.conflict(stored: existing.version, attempted: item.expectedVersion)
-    }
-    Self.fill(existing, from: item)
-    existing.version += 1
-} else {
-    let new = ItemEntity(context: ctx)
-    Self.fill(new, from: item)
-    new.version = 1
-}
-try ctx.save()
-```
-
-ViewModel handles `RepositoryError.conflict` by re-fetching and prompting the user (or by merging). See `error-architecture` for the conflict → `UserMessage` mapping.
-
-### Anti-pattern: silent write failure
-
-Often hidden in async wrappers:
-
-```swift
-// ❌ DANGEROUS
-func save(_ project: Project) throws {
-    dataStack.perform(asynchronous: { tx in
-        // ... do save work ...
-    }, completion: { _ in })          // ← result ignored
-}
-```
-
-The function is declared `throws` but **cannot actually throw**, because the work runs on a different thread after the function has already returned. Any error inside is dropped. The UI shows «Saved!», the disk shows nothing.
-
-Fix: bridge to async/await with `withCheckedThrowingContinuation`, or use the framework's synchronous variant if a brief block is acceptable, or expose `async throws` instead of fake `throws`:
-
-```swift
-func save(_ project: Project) async throws {
-    try await withCheckedThrowingContinuation { cont in
-        dataStack.perform(asynchronous: { tx in
-            // ... do save work ...
-        }, completion: { result in
-            switch result {
-            case .success:        cont.resume()
-            case .failure(let e): cont.resume(throwing: e)
-            }
-        })
-    }
-}
-```
-
-## Querying and Reactivity
-
-Lists in modern apps are reactive: when data changes, UI updates without manual refresh. Each framework has a primitive for this.
-
-| Framework | Reactive primitive | Notes |
-|---|---|---|
-| Core Data | `NSFetchedResultsController` (UIKit), `@FetchRequest` (SwiftUI) | Old, battle-tested. Bridges to Combine via `objectWillChange` or custom publisher. |
-| SwiftData | `@Query` (SwiftUI), `FetchDescriptor` (manual) | `@Query` re-fires on any change to the model — fine for lists, wasteful for detail screens. |
-| GRDB | `ValueObservation` | Returns `AsyncValueObservation` or Combine `Publisher`. Diff-aware. |
-| Realm | Live results + `Results.observe(_:)` | Thread-confined; freeze for cross-thread. |
-
-Wrap the framework primitive behind a Repository method that returns `AsyncStream<[Item]>` or `AnyPublisher<[Item], Error>` — same Domain types, framework hidden.
-
-```swift
-extension GRDBItemRepository {
-    func observe(filter: ItemFilter) -> AsyncStream<[Item]> {
-        AsyncStream { continuation in
-            let observation = ValueObservation.tracking { db in
-                try ItemRecord
-                    .filter(filter.gdrbPredicate)
-                    .fetchAll(db)
-            }
-            let cancellable = observation.start(in: dbPool) { error in
-                continuation.finish()
-            } onChange: { records in
-                continuation.yield(records.map(Self.toDomain))
-            }
-            continuation.onTermination = { _ in cancellable.cancel() }
-        }
-    }
-}
-```
-
-ViewModel consumes the stream; never knows GRDB exists.
-
-For SwiftUI + Core Data, `@FetchRequest` is the analogue of SwiftData's `@Query`:
-
-```swift
-struct ItemList: View {
-    @FetchRequest(sortDescriptors: [SortDescriptor(\.createdAt)])
-    var items: FetchedResults<ItemEntity>
-
-    var body: some View { ... }
-}
-```
-
-Same caveat: re-fires on any change to the entity type — fine for lists, wasteful for detail screens.
-
-> **Spotlight integration:** Core Data has `NSCoreDataCoreSpotlightDelegate` that mirrors entities into the system-wide search index. Configure it on the store description; opt-in only for entities the user might actually search (titles, names — not raw foreign keys).
->
-> **Cross-process / multi-coordinator change notifications:** standard `NSManagedObjectContextDidSave` / `ObjectsDidChange` only fire within one coordinator instance. For cross-process notifications, see *Persistent History Tracking*.
+Mapping happens inside the repository. Mappers should be pure functions or
+small stateless collaborators and should throw typed mapping errors instead of
+returning `nil` as an error signal.
+
+## Threading
+
+Framework rules differ; never flatten them behind a universal storage facade.
+
+- Core Data: use `viewContext` for main-actor reads/UI integration by
+  convention; use `performBackgroundTask` for writes; pass object IDs across
+  contexts.
+- SwiftData: create one `ModelContainer`; use `@ModelActor` or actor-owned
+  `ModelContext` for background work; pass `PersistentIdentifier` or snapshots.
+- GRDB: use `DatabasePool` for production; reads can run concurrently and writes
+  are serialized.
+- Realm: live objects are thread-confined; freeze snapshots or map to Domain
+  before crossing threads.
+
+Never `await` while holding a framework transaction/context block that expects
+synchronous work.
+
+## Write Patterns
+
+- Prefer `upsert(_:)` over separate create/update methods so existence checks and
+  writes happen in one transaction.
+- Save once per normal repository write. Multiple saves expose intermediate
+  states.
+- Diff child collections by stable ID; do not delete and recreate all children on
+  every parent save.
+- Use targeted delta writes for frequently changed single fields.
+- Distinguish all-or-nothing bulk writes from resumable chunked imports. Chunked
+  imports are intentionally not atomic at repository level.
+- Encode optimistic concurrency with a `version` or equivalent conflict token
+  when multiple screens/devices can edit the same record.
+- Never hide async write errors behind fake `throws`; bridge callbacks to
+  `async throws` with a checked continuation or expose completion/result.
+
+## Querying And Reactivity
+
+Repositories may expose observations, but the values emitted are Domain
+snapshots:
+
+- Core Data: `NSFetchedResultsController`, `@FetchRequest`, or a custom bridge.
+- SwiftData: `@Query` for lists; manual `FetchDescriptor` for detail screens
+  where unrelated changes would cause wasteful rerenders.
+- GRDB: `ValueObservation`.
+- Realm: live results mapped/frozen before crossing boundaries.
 
 ## Migrations
 
-Schema evolution is a separate concern with its own mental model: lightweight vs heavyweight, `NSEntityMigrationPolicy`, SwiftData `VersionedSchema`/`MigrationStage`, GRDB `DatabaseMigrator`, transformable Codable payloads, progressive chains, long-migration UX, atomic backup, failure recovery, fixture-based tests.
+Switch to `persistence-migrations` whenever a shipped schema changes, a
+transformable Codable payload changes, or a heavyweight migration reaches the
+launch path.
 
-→ **See `persistence-migrations` skill.** Applies whenever a shipped schema changes, a transformable Codable payload changes, or a heavyweight migration needs to run on the launch path.
+Persistence architecture still owns the lifecycle decision: migrations run
+during explicit stack warm-up in the Composition Root, before repositories are
+resolved.
 
-The persistence-architecture skill assumes:
-- Container/stack lifecycle in DI (this skill, *Dependency Injection*) calls `try await stack.warmUp()` before any Repository resolves; that's where `persistence-migrations` runs.
-- Repository methods (this skill, *Repository Boundary*) operate on an already-migrated store — they don't deal with version drift.
-- Migration failures surface as typed `MigrationFailure` errors mapped per `error-architecture` rules.
+## Sync, CloudKit, And Multi-Process
 
-## CloudKit and Sync
+- Enable Persistent History Tracking for Core Data stores shared across app
+  extensions, background URLSession handlers, or CloudKit.
+- Treat CloudKit sync as eventually consistent; show sync state and handle
+  quota, offline, and retryable server errors.
+- CloudKit-compatible Core Data schemas need optional/defaulted attributes,
+  inverse relationships, no unique constraints, concrete attribute types, and
+  no `CD_`-prefixed names.
+- For remote API + local cache, decide between read-through cache and
+  cache-plus-background-refresh. HTTP caching lives in `net-architecture`.
 
-When data must follow the user across devices, you have three choices:
+## Security
 
-| Option | When |
-|---|---|
-| `NSPersistentCloudKitContainer` (Core Data + CloudKit) | Apple-only, want zero backend, willing to live with CloudKit's quirks (slow first sync, schema deploys via Xcode) |
-| SwiftData + CloudKit | iOS 17+ greenfield; same trade-offs as above, less mature |
-| Custom sync (server + GRDB/SQLite) | Cross-platform, want push-based delta sync, willing to write conflict resolution |
-
-**Conflict resolution** must be explicit:
-- **Last-write-wins** — simple, loses data. OK for low-stakes (preferences, caches).
-- **Per-field merge** — keep both sides where they don't conflict. Requires field-level `updatedAt`.
-- **CRDT** — operational, complex. Worth it for collaborative editing.
-
-CloudKit-specific: handle `CKError.quotaExceeded`, `CKError.networkUnavailable`, `CKError.zoneBusy` explicitly. Show a sync-status indicator; never silently fail.
-
-### Schema constraints under NSPersistentCloudKitContainer
-
-CloudKit imposes hard schema rules on top of Core Data. Violate them and the store «works» locally but never syncs. The constraints, in priority order:
-
-- **All attributes optional or with a default value.** CloudKit's eventual-consistency model can't accept «required» — newly synced records may arrive partial.
-- **All relationships must have an inverse.** Even if you logically don't need one. No exceptions.
-- **No `Unique` constraints** in the model editor. CloudKit can't enforce them across devices.
-- **Entity and attribute names cannot start with `CD_`** — that prefix is reserved for CloudKit's internal mirror.
-- **Cannot use `Undefined` attribute type.** Each attribute must have a concrete type.
-- **`Transformable` attributes must use `NSSecureUnarchiveFromData`** transformer.
-- **Persistent History Tracking is mandatory** — see the dedicated section.
-
-Violations don't fail loudly — `loadPersistentStores` succeeds, but the next sync attempt is silently broken. Test it explicitly in CI:
-
-```swift
-#if DEBUG
-try container.initializeCloudKitSchema(options: [.dryRun])
-#endif
-```
-
-This validates the schema against CloudKit's rules without actually deploying it.
-
-## Caching: Persistence as a Cache
-
-A common pattern: remote API + local persistence as cache. Two architectures:
-
-**Read-through cache** — Repository tries cache first, falls back to network, populates cache.
-
-```swift
-func fetch(id: Item.ID) async throws -> Item {
-    if let cached = try await store.fetch(id: id), !cached.isStale {
-        return cached
-    }
-    let fresh = try await api.fetch(id: id)
-    try await store.upsert(fresh)
-    return fresh
-}
-```
-
-**Cache + observe** — Repository always returns the cache (possibly stale), and triggers a background refresh that updates the cache, which the observer sees.
-
-```swift
-func observe(id: Item.ID) -> AsyncStream<Item> {
-    Task { try? await refresh(id: id) }   // fire-and-forget refresh
-    return store.observe(id: id)          // UI sees cached data immediately
-}
-```
-
-**TTL / invalidation** — store `fetchedAt: Date` on the cached entity. Stale = `Date.now - fetchedAt > ttl`. Invalidate on logout, on user-triggered pull-to-refresh, on push notification of a server-side change.
-
-See `net-architecture` for HTTP-level caching (`Cache-Control`, `ETag`) — that's a separate layer that complements persistence-level caching.
-
-## Encryption and File Protection
-
-By default, iOS encrypts files when the device is locked (`NSFileProtectionCompleteUntilFirstUserAuthentication`). For sensitive data, raise the bar:
-
-- **`NSFileProtectionComplete`** — file unreadable when device is locked. Set on the persistent store file:
-
-  ```swift
-  try (storeURL as NSURL).setResourceValue(
-      URLFileProtection.complete,
-      forKey: .fileProtectionKey
-  )
-  ```
-
-- **Keychain for keys, encryption library for data** — if you need at-rest encryption above iOS defaults, use SQLCipher (with GRDB) or a Realm encryption key stored in Keychain.
-- **Never store secrets in Core Data / SwiftData / SQLite without encryption** — the file is readable by anyone with filesystem access (jailbroken device, backup).
-- **Keychain access control** — `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` prevents iCloud sync of the key. See `swift-security` skill / agent.
+- Primary databases belong in `Library/Application Support`, not `Documents`.
+- Media and user-owned documents live as files; keep paths/metadata in the DB.
+- Use `NSFileProtectionComplete` when sensitive local data must be unreadable
+  while the device is locked.
+- Store secrets and encryption keys in Keychain, not UserDefaults or a plain
+  database.
+- Use SQLCipher/GRDB or Realm encryption when app-level database encryption is
+  required.
 
 ## Dependency Injection
 
-Persistence stack is **process-wide singleton scope**. Bootstrap once in Composition Root. The next decision — what exactly you put into DI: the raw framework container, or a thin facade.
-
-### Pattern A — Container directly in DI
-
-```swift
-container.register(NSPersistentContainer.self) { _ in
-    let c = NSPersistentContainer(name: "Model")
-    c.loadPersistentStores { _, _ in }
-    return c
-}.inObjectScope(.container)
-
-container.register(ItemRepository.self) { r in
-    CoreDataItemRepository(container: r.resolve(NSPersistentContainer.self)!)
-}
-```
-
-**Use when:** one container, one or two Repositories, simple bootstrap. The Repository is the only consumer and already isolates the framework (returns Domain types, never leaks `NSManagedObject`). One point of contact with the framework — encapsulation already achieved.
-
-### Pattern B — `PersistenceStack` facade
-
-```swift
-final class PersistenceStack {
-    private let container: NSPersistentContainer
-
-    init(location: StoreLocation) {
-        container = NSPersistentContainer(name: "Model")
-        configureLocation(location)
-    }
-
-    func warmUp() async throws {
-        try await container.loadPersistentStoresAsync()
-        container.viewContext.automaticallyMergesChangesFromParent = true
-        container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
-    }
-
-    var viewContext: NSManagedObjectContext { container.viewContext }
-    func performBackgroundTask<T>(_ block: @escaping (NSManagedObjectContext) throws -> T) async throws -> T { ... }
-}
-
-container.register(PersistenceStack.self) { _ in
-    PersistenceStack(location: .disk(Self.dbURL))
-}.inObjectScope(.container)
-
-container.register(ItemRepository.self) { r in
-    CoreDataItemRepository(stack: r.resolve(PersistenceStack.self)!)
-}
-```
-
-The facade owns lifecycle and startup configuration. The container still surfaces through `viewContext` / `performBackgroundTask` — **deliberately**, because the difference between «main context» and «background context» is part of the contract, not an implementation detail.
-
-**Use when:**
-
-- Multiple Repositories share one container — single place for merge policy, retention, warm-up coordination.
-- Async bootstrap is non-trivial: migrations, indexes, restore-from-backup, telemetry. `try await stack.warmUp()` is an explicit step in Composition Root, before any Repository resolves.
-- Multiple stores under one lifecycle (Core Data + Keychain + GRDB grouped in one «persistence layer»).
-- Centralised telemetry (transaction duration, rollback frequency) or error wrapping.
-- Tests: `PersistenceStack(location: .inMemory)` vs `.disk(URL)` — one parameter switches the mode app-wide.
-
-### Anti-pattern: «universal storage facade»
-
-The temptation to hide the framework completely:
-
-```swift
-// ❌
-protocol Storage {
-    func read<T>(_ block: (Reader) throws -> T) async throws -> T
-    func write<T>(_ block: (Writer) throws -> T) async throws -> T
-}
-```
-
-Looks clean. The reason it isn't: **the facade hides the framework's API, but cannot hide its access rules — and the rules leak out as runtime crashes.**
-
-Concrete failure mode:
-
-```swift
-let item = try await storage.read { try fetchItem(id: id) }   // returns NSManagedObject
-await someOtherWork()
-print(item.title)                                              // 💥 NSObjectInaccessibleException
-```
-
-The caller did everything right by the contract they saw — `read` returned a value, they used it. The actual Core Data rule («the value is valid only inside the context block») was hidden by the facade but didn't go away. Same shape with Realm (live object thread-confined), with SwiftData (`@Model` instance isolated to its context).
-
-You can't fix this inside the facade:
-
-- Return only value-type snapshots from `read` → the facade is doing mapping, which is what Repository exists for.
-- Forbid escaping the value from the block → not expressible in the Swift type system.
-- Document the rule → you didn't hide the framework, you only renamed it.
-
-Other things that don't actually abstract:
-
-- **Errors are framework-shaped.** Core Data merge conflicts vs SQLite error codes vs Realm `Error` enum — collapse them into one `StorageError` and you lose «which constraint»; pass them raw and the caller has to know the framework anyway.
-- **Cancellation behaviour differs.** Core Data `performBackgroundTask` ignores `Task.cancel()`; GRDB rolls back on throw; Realm has no async cancellation. A single «write semantics» is fiction.
-- **The promised swap doesn't happen.** Migrating Core Data → GRDB rewrites every query, every record type, every observation, every migration script. The `read/write` facade saves zero lines — every block body changes.
-
-«I'll hide the framework behind a universal facade so it's easy to swap later» is **YAGNI with a negative**: cost paid today (extra layer, extra docs, hidden invariants leaking as crashes), benefit hypothetical, and at the moment of the hypothetical migration the facade doesn't actually save you.
-
-### What vs how — the formula
-
-The boundary that works: Repository abstracts **what** is stored (`fetch(id:) -> Item`, where `Item` is a value-type snapshot). The boundary that doesn't: a generic facade abstracts **how** to read and write — but cannot abstract the rules around the values it returns. So:
-
-> Hiding the **lifecycle** of a framework is useful (`PersistenceStack`).
-> Hiding the **API** of a framework is dishonest (`Storage` with universal `read/write`).
-> Hiding the **what is stored** is the goal — and that's `Repository`, which already exists.
-
-### Picking between A and B
-
-| You have | Use |
-|---|---|
-| 1 container, 1–2 Repositories, simple bootstrap | Pattern A (container in DI) |
-| Several Repositories, shared configuration (merge policy, telemetry, warm-up) | Pattern B (PersistenceStack facade) |
-| Multiple stores under one lifecycle | Pattern B |
-| «Want to easily swap Core Data for SwiftData later» | Neither — the difference between them is real, not implementation-level. Migration will rewrite Repositories regardless. |
-
-### Common rules (both patterns)
-
-- **One container per process.** Never `try ModelContainer(...)` inside a Repository factory.
-- **Repository scope = `.transient`** if stateful, `.container` if stateless — but the underlying container/stack is always `.container` singleton.
-- **In-memory variant for tests** — Composition Root (or `PersistenceStack.init`) accepts a `StoreLocation` parameter (`.disk(URL)` / `.inMemory`). Test setup passes `.inMemory`; the rest of the bootstrap is identical.
-- **Async bootstrap explicit in Composition Root.** Warm-up belongs to a `try await stack.warmUp()` step before features resolve — never lazy-on-first-call inside a Repository, where the first user save eats a 3-second migration with no UI feedback.
-
-See `di-composition-root` for the full pattern; `di-module-assembly` for registering Repositories into feature modules.
-
-## Generic Mappers — What's Universal, What Isn't
-
-> **Optional reading.** Skip unless you maintain 10+ entity-pair mappers and are looking for a way to reduce boilerplate.
-
-A recurring question on any project with 10+ entity pairs: *can we write the mapping once, generically?* The honest answer has four levels — only two of them work, and most «generic mapper» attempts in real codebases blur them into a mess.
-
-### Level 1 — Universal contract ✅
-
-One protocol describing «a mapper» in general:
-
-```swift
-protocol EntityMapping {
-    associatedtype Domain
-    associatedtype Entity
-    func toDomain(_ entity: Entity) throws -> Domain
-    func toEntity(_ model: Domain, in tx: Transaction) throws -> Entity
-    func update(_ entity: Entity, from model: Domain, in tx: Transaction) throws
-}
-```
-
-This is correct and recommended. It gives you:
-
-- a common type for DI / tests / composition,
-- compile-time check that all methods are implemented,
-- associated types instead of generics — you can't accidentally instantiate `EntityMapping<String, Int>` without conformance.
-
-**But** the body of each conformance — the actual «which field maps where» — is hand-written per pair. The contract is universal; the implementation isn't.
-
-> **Anti-pattern often seen here:** abstract base class with `func toDomain(...) -> Domain { fatalError("must override") }`. The shape is the same as the protocol, but you trade compile-time safety for runtime crashes. Use a protocol.
-
-### Level 2 — Generic helpers for primitive fields ⚠️
-
-`KeyPath`-based copy machinery for plain fields:
-
-```swift
-struct FieldCopy<Domain, Entity, Value> {
-    let domainKeyPath: WritableKeyPath<Domain, Value>
-    let entityKeyPath: ReferenceWritableKeyPath<Entity, Value>
-}
-```
-
-The idea works for **flat, type-aligned fields**. It breaks down on every realistic Core Data / SwiftData / Realm specifics:
-
-| You want | What stops you |
-|---|---|
-| `Int → Int32` (Core Data prefers Int32) | Different `Value` types — generic doesn't unify, you need a transformer |
-| Enum ↔ String / Int | Per-type transformer |
-| One-to-many: `[Track] ↔ NSSet` | Need to call child mapper, then wrap into `NSSet` — generic doesn't express this |
-| Transformable attributes (`MediaTime → Data`) | `encode/decode` per type |
-| Optional Domain → non-optional Entity | Per-field decision: default? throw? skip? |
-| Inverse relationships | Two-sided assignment — generic can't express |
-
-In practice, KeyPath-machinery saves ~10–20% of code in average mappers and adds a new abstraction layer to learn. Worth it only when you have 30+ very flat mappers — not for typical app domains.
-
-### Level 3 — Universal mapping body via Codable / Mirror ❌
-
-«Make Entity also `Codable`, round-trip Domain through `JSONEncoder` → `JSONDecoder`». Tempting; doesn't work for Core Data / Realm / SwiftData:
-
-- `NSManagedObject` isn't naturally `Codable` — writing the encoder *is* writing the mapper.
-- Relationships become nested JSON — you can't update an existing entity in place, only recreate (and you've already seen why that's bad — see *Updating child collections*).
-- Field names must match byte-for-byte; renames silently break.
-- No place for validation, type migration, defaults, derived fields.
-- JSON round-trip on every save — performance hit visible at 100+ rows.
-- **No diagnostics** — failure surfaces as `DecodingError` deep in the stack with no field context.
-
-`Mirror`-based reflection has the same problems plus weaker type safety and no `@Codable`-style derivation help.
-
-### Level 4 — Codegen or Swift macros ✅
-
-This is the modern answer when manual mapping pain is real and recurring. Annotate the snapshot:
-
-```swift
-@Mappable(entity: ItemEntity.self, fields: [
-    .copy(\.id),
-    .copy(\.title),
-    .transform(\.startTime, encoder: AttributeConverter.encode, decoder: AttributeConverter.decode),
-    .nested(\.location, mapper: LocationMapper.self),
-    .collection(\.tracks, on: \.tracks, mapper: TrackMapper.self),
-])
-struct ItemSnapshot { ... }
-```
-
-The macro expands at compile time to a full `toDomain` / `toEntity` / `update` body — type-safe, zero runtime cost, generated code is inspectable. Pre-macro alternative: **Sourcery** (template-based codegen, Stencil files + annotations).
-
-**When this pays off:**
-
-- ≥15 mapper pairs of similar shape, and the count is growing.
-- You actively add new entity types (effects, presets, plugins, content types).
-- The team owns toolchain choices — adding a build-time generator or macro target is acceptable.
-
-**When NOT to invest in codegen:**
-
-- <10 mappers — manual code is shorter than the macro DSL.
-- Mappers have very irregular shapes (each one does something unique) — the macro DSL becomes too rich and you lose readability.
-- You're on Swift < 5.9 and don't want to add Sourcery — wait for the macro option.
-
-### Pragmatic Recommendation
-
-| Make generic | Write by hand or generate |
-|---|---|
-| Mapper **contract** — protocol with associated types | Mapper **bodies** — fields, types, validation |
-| Repository **contract** — `protocol XxxRepository` | Type-by-type **dispatch** — never `<M>` + `as!` |
-| Storage primitive contract (if needed) | Per-entity Repository |
-
-Two failure modes to watch:
-
-1. **«Universal repository» via runtime type-switch** (`func fetchAll<M>(type: M.Type) -> [M]` with `as! [M]` inside). This isn't generic mapping — it's type-erased dispatch, and it breaks open-closed: every new entity edits the central switch. Replace with **one repository per entity type** behind a typed protocol.
-
-2. **«Generic mapper that does it all» via reflection / Codable.** See Level 3 — the universality you save in code is paid back in lost diagnostics, broken relationships, and silent renames.
-
-If hand-written mappers feel painful at scale, the answer is **codegen / macros (Level 4)** — not «smarter generics» (Levels 2–3).
+Create the persistence container/stack once in the Composition Root.
+
+Use the raw framework container directly in DI when the setup is simple and one
+or two repositories consume it. Use a `PersistenceStack` facade when lifecycle
+concerns are meaningful: migrations, warm-up, telemetry, multiple repositories,
+multiple stores, or in-memory test configuration.
+
+Do not create a universal `Storage.read/write` facade. It hides the API but
+cannot hide context confinement, live-object lifetime, error shape, cancellation
+semantics, or migration differences. Repository abstracts what is stored; the
+storage primitive still owns how the framework works.
 
 ## Testing
 
-Five layers of tests, in order of how often they run:
-
-### Unit tests — mock the Repository
-
-ViewModels and UseCases depend on `protocol ItemRepository` — pass a `FakeItemRepository` with in-memory dictionary state.
-
-```swift
-final class FakeItemRepository: ItemRepository {
-    var items: [Item.ID: Item] = [:]
-    func fetch(id: Item.ID) async throws -> Item? { items[id] }
-    func upsert(_ item: Item) async throws { items[item.id] = item }
-    // ...
-}
-```
-
-### Integration tests — real framework, in-memory store
-
-Test the Repository implementation against a real DB but in-memory:
-
-| Framework | In-memory store |
-|---|---|
-| Core Data | `NSPersistentStoreDescription(url: URL(fileURLWithPath: "/dev/null"))` + `NSInMemoryStoreType` |
-| SwiftData | `ModelConfiguration(isStoredInMemoryOnly: true)` |
-| GRDB | `DatabasePool(path: ":memory:")` or `DatabaseQueue()` (no path) |
-| Realm | `Realm.Configuration(inMemoryIdentifier: "test-\(UUID())")` |
-
-Each test gets a fresh store — no inter-test pollution.
-
-#### SwiftData testing under @MainActor
-
-SwiftData's `ModelContainer` and `mainContext` are `@MainActor`. Tests that interact with them must be:
-
-```swift
-@MainActor
-final class ItemRepositoryTests: XCTestCase {
-    var container: ModelContainer!
-    var sut: SwiftDataItemRepository!
-
-    override func setUp() async throws {
-        let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        container = try ModelContainer(for: ItemEntity.self, configurations: config)
-        sut = SwiftDataItemRepository(modelContainer: container)
-    }
-    ...
-}
-```
-
-For testing background actors (`@ModelActor`), test methods are non-isolated by default and `await` into the actor naturally.
-
-### Migration tests / Codable snapshot tests
-
-Fixture-based migration tests and snapshot tests for transformable Codable payloads belong with the migration mechanics they verify.
-
-→ See `persistence-migrations` / *Testing*.
-
-### Concurrency tests
-
-Repository methods that allow concurrent writes need explicit conflict tests:
-
-```swift
-func test_concurrentUpsert_oneSucceedsOneConflicts() async throws {
-    let id = UUID()
-    try await repo.upsert(Item.makeFixture(id: id, title: "original"))   // version=1
-
-    let edit1 = Item.makeFixture(id: id, title: "device A", expectedVersion: 1)
-    let edit2 = Item.makeFixture(id: id, title: "device B", expectedVersion: 1)
-
-    func capture(_ operation: @escaping () async throws -> Void) async -> Result<Void, Error> {
-        do {
-            try await operation()
-            return .success(())
-        } catch {
-            return .failure(error)
-        }
-    }
-
-    async let r1: Result<Void, Error> = capture { try await repo.upsert(edit1) }
-    async let r2: Result<Void, Error> = capture { try await repo.upsert(edit2) }
-
-    let outcomes = await [r1, r2]
-    let successes = outcomes.filter { result in
-        if case .success = result { return true }
-        return false
-    }
-    let conflicts = outcomes.filter { result in
-        if case .failure(let e as RepositoryError) = result, case .conflict = e { return true }
-        return false
-    }
-
-    XCTAssertEqual(successes.count, 1)
-    XCTAssertEqual(conflicts.count, 1)
-}
-```
-
-### Test data builders
-
-For complex Domain types, hand-rolled `Item(...)` constructors in every test get unwieldy. A builder pattern keeps tests focused on the field that matters:
-
-```swift
-extension Item {
-    static func makeFixture(
-        id: UUID = UUID(),
-        title: String = "test",
-        createdAt: Date = .now,
-        updatedAt: Date = .now,
-        isArchived: Bool = false
-    ) -> Item {
-        Item(id: id, title: title, createdAt: createdAt, updatedAt: updatedAt, isArchived: isArchived)
-    }
-}
-
-func test_archive_setsIsArchived() async throws {
-    let item = Item.makeFixture(isArchived: false)   // ← only the relevant field
-    try await repo.upsert(item)
-    try await sut.archive(id: item.id)
-    let reloaded = try await repo.fetch(id: item.id)
-    XCTAssertTrue(reloaded?.isArchived == true)
-}
-```
-
-Default values mean each test mentions only the fields it cares about — readable assertions about behaviour, not setup noise.
+- Unit-test ViewModels/UseCases with fake repositories.
+- Integration-test repository implementations against real in-memory stores.
+- Add migration fixture tests in `persistence-migrations`.
+- Add concurrency/conflict tests for write methods that allow concurrent edits.
+- Use test data builders for complex Domain values so tests mention only the
+  fields that matter.
 
 ## Common Mistakes
 
-Each entry one line + cross-reference to the body section that explains the fix.
-
-1. **Returning `NSManagedObject` / `@Model` / Realm `Object` from Repository** — leaks the framework, thread-confined. See *Repository Boundary*.
-2. **One context for reads and writes on the main thread** — UI freezes. See *Threading and Contexts*.
-3. **Sharing `NSManagedObject` / Realm object across threads** — silent crashes/corruption. See *Sendable and Swift Concurrency*.
-4. **`UserDefaults` for «real» data** — sync I/O, 4KB practical limit, NOT encrypted. Use Keychain for secrets, a real DB for collections.
-5. **Storing PII / tokens unencrypted** — see *Encryption and File Protection*.
-6. **`@Query` / `@FetchRequest` in detail screens** — re-renders on any model change. Use manual fetch + `@State`.
-7. **Mixing remote and local errors at the Repository boundary** — see `error-architecture`.
-8. **Treating CloudKit sync as instant** — first sync can take minutes; show sync-status UI.
-9. **No identity strategy** — auto-increment IDs collide on cross-device sync. Use `UUID`.
-10. **Hard delete with no audit / sync** — see *Schema Design / Soft delete*.
-11. **Loading large blobs into the database** — store as files, keep path in DB.
-12. **Fake `throws` over async work** — see *Repository Write Patterns / Anti-pattern: silent write failure*.
-13. **Delete-and-recreate children on every parent save** — see *Updating child collections — diff*.
-14. **Returning `Optional<Domain>` from a mapper as an error signal** — make mappers `throws` with typed `MappingError(field:, reason:)`.
-15. **Mutable shared state inside a mapper** (`var transaction`) — pass context as a parameter to each call.
-16. **`NSPredicate` / `NSSortDescriptor` in the abstract storage protocol** — leaks Core Data; use a domain-level `Filter`.
-17. **«Universal storage facade»** — see *Dependency Injection / Anti-pattern*.
-18. **Lazy bootstrap inside the first Repository call** — run `try await stack.warmUp()` explicitly in Composition Root.
-19. **DB file in `Documents/`** — backed up to iCloud, eats user quota, visible in Files. Use `Library/Application Support/`. See *Storage Location and Sharing*.
-20. **Sharing Core Data between app and Extension without Persistent History Tracking** — extension writes invisible to main app. See *Persistent History Tracking*.
-21. **Storing `Date` as locale-formatted `String`** — `DateFormatter` without `.iso8601` is locale-dependent; user travelling between locales gets garbled timestamps. Use `Date` natively or `ISO8601DateFormatter`.
-22. **Domain model with non-Sendable types (`UIImage`, `NSAttributedString`)** — Swift 6 rejects, or silently passes corrupt data across actors. Store as `Data` / `URL` and convert at the UI layer. See *Sendable and Swift Concurrency*.
-23. **CloudKit-incompatible schema** (required attributes without defaults, missing inverse relationships, `Unique` constraints) — local store works, sync silently broken. See *CloudKit / Schema constraints*.
-
-> Migration-specific mistakes (no migration plan, edited shipped migration, mega mapping model, missing fixture test, auto-deleting DB on failure, etc.) live in `persistence-migrations` / *Common Mistakes*.
+- Returning framework objects from repositories.
+- Doing writes on the main context/thread.
+- Sharing thread-confined objects across actors or queues.
+- Using UserDefaults for collections or secrets.
+- Putting database files in `Documents/`.
+- Saving multiple times inside a normal repository write.
+- Deleting and recreating child collections instead of diffing.
+- Letting `@Query` / `@FetchRequest` drive detail screens that should not
+  rerender on unrelated writes.
+- Treating CloudKit sync as instant or ignoring CloudKit schema constraints.
+- Skipping migration tests for shipped schemas.
+- Lazy-loading the persistence stack on the first repository call.
