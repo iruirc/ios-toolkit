@@ -67,9 +67,9 @@ truth for both detection and the option list the orchestrator renders in AUQ.
 
 4. for axis in needed, resolve via the per-axis chain (first hit wins):
        a. Task.md → ## 4. [Stack] line for axis
-       b. CLAUDE-swift-toolkit.md → ## Stack line for axis
-       c. CLAUDE-swift-toolkit.md → ## Modules (if a module entry matching a
+       b. CLAUDE-swift-toolkit.md → ## Modules (if a module entry matching a
           task file overrides the axis)
+       c. CLAUDE-swift-toolkit.md → ## Stack line for axis
        d. imports_implied[axis] from step 2 (only axes with a heuristic)
    resolved[axis]   := first hit
    unresolved       := needed axes with no hit

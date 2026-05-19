@@ -204,7 +204,9 @@ files — the orchestrator owns the per-axis AUQ (locale keys
 `auq_axis_<axis>_question`, options from the stack-detect Axis Catalog), the
 `Task.md → ## 4. [Stack]` cache write, and concatenated serialization. The
 default path-to-axis mapping lives in `conventions/stack-axis-mapping.md`;
-projects override it via `CLAUDE-swift-toolkit.md → ## Modules`. When
+projects override the global `## Stack` via `CLAUDE-swift-toolkit.md → ## Modules`.
+The effective precedence is task-local `## 4. [Stack]` → module override →
+global `## Stack` → import scan. When
 `envelope.never == all` (review/epic), the project `## Stack` is read raw and
 passed as ambient informational context only — no chain, no AUQ.
 
