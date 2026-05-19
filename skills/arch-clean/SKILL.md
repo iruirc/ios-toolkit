@@ -89,7 +89,7 @@ struct Item {
     let createdAt: Date
 }
 
-enum ItemStatus {
+enum ItemStatus: String {
     case active
     case archived
     case deleted
@@ -210,19 +210,38 @@ Maps between external formats and Domain entities. DTOs are the same regardless 
 ```swift
 // Data/DTOs/ItemDTO.swift
 struct ItemDTO: Codable {
+    enum MappingError: Error {
+        case invalidStatus(String)
+        case invalidCreatedAt(String)
+    }
+
     let id: String
     let title: String
     let description: String
     let status: String
-    let created_at: String
+    let createdAt: String
 
-    func toDomain() -> Item {
-        Item(
+    private static let dateFormatter = ISO8601DateFormatter()
+
+    enum CodingKeys: String, CodingKey {
+        case id, title, description, status
+        case createdAt = "created_at"
+    }
+
+    func toDomain() throws -> Item {
+        guard let itemStatus = ItemStatus(rawValue: status) else {
+            throw MappingError.invalidStatus(status)
+        }
+        guard let date = Self.dateFormatter.date(from: createdAt) else {
+            throw MappingError.invalidCreatedAt(createdAt)
+        }
+
+        return Item(
             id: id,
             title: title,
             description: description,
-            status: ItemStatus(rawValue: status) ?? .active,
-            createdAt: DateFormatter.iso8601.date(from: created_at) ?? Date()
+            status: itemStatus,
+            createdAt: date
         )
     }
 
@@ -232,7 +251,7 @@ struct ItemDTO: Codable {
             title: item.title,
             description: item.description,
             status: item.status.rawValue,
-            created_at: DateFormatter.iso8601.string(from: item.createdAt)
+            createdAt: dateFormatter.string(from: item.createdAt)
         )
     }
 }
@@ -302,16 +321,16 @@ class ItemRepositoryImpl: ItemRepositoryProtocol {
         do {
             let dtos = try await remote.fetchItems()
             try? await local.cache(dtos)
-            return dtos.map { $0.toDomain() }
+            return try dtos.map { try $0.toDomain() }
         } catch {
             let cached = try await local.getCachedItems()
-            return cached.map { $0.toDomain() }
+            return try cached.map { try $0.toDomain() }
         }
     }
 
     func getItem(id: String) async throws -> Item {
         let dto = try await remote.fetchItem(id: id)
-        return dto.toDomain()
+        return try dto.toDomain()
     }
 
     func save(_ item: Item) async throws {
@@ -344,11 +363,11 @@ class ItemRepositoryImpl: ItemRepositoryProtocol {
             .catch { [local] _ in
                 local.getCachedItems()
             }
-            .map { dtos in dtos.map { $0.toDomain() } }
+            .map { dtos in try dtos.map { try $0.toDomain() } }
     }
 
     func getItem(id: String) -> Single<Item> {
-        remote.fetchItem(id: id).map { $0.toDomain() }
+        remote.fetchItem(id: id).map { try $0.toDomain() }
     }
 
     func save(_ item: Item) -> Completable {
@@ -382,12 +401,14 @@ class ItemRepositoryImpl: ItemRepositoryProtocol {
             .catch { [local] _ in
                 local.getCachedItems()
             }
-            .map { dtos in dtos.map { $0.toDomain() } }
+            .tryMap { dtos in try dtos.map { try $0.toDomain() } }
             .eraseToAnyPublisher()
     }
 
     func getItem(id: String) -> AnyPublisher<Item, Error> {
-        remote.fetchItem(id: id).map { $0.toDomain() }.eraseToAnyPublisher()
+        remote.fetchItem(id: id)
+            .tryMap { try $0.toDomain() }
+            .eraseToAnyPublisher()
     }
 
     func save(_ item: Item) -> AnyPublisher<Void, Error> {
