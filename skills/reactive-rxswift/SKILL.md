@@ -233,8 +233,16 @@ button.rx.tap
     .bind(to: viewModel.submitTrigger)
     .disposed(by: disposeBag)
 
-// Control property two-way binding
-(textField.rx.text <-> viewModel.text)
+// Two-way binding is not a standard RxSwift/RxCocoa operator.
+// Bind both directions explicitly unless the project defines its own `<->`.
+textField.rx.text.orEmpty
+    .distinctUntilChanged()
+    .bind(to: viewModel.text)
+    .disposed(by: disposeBag)
+
+viewModel.text
+    .distinctUntilChanged()
+    .bind(to: textField.rx.text)
     .disposed(by: disposeBag)
 ```
 
@@ -278,15 +286,17 @@ class FeatureViewModel: FeatureViewModelProtocol {
         )
 
         let itemsObservable = loadTrigger
-            .do(onNext: { _ in loadingRelay.accept(true) })
             .flatMapLatest { _ in
                 service.fetchItems()
                     .catch { error in
                         errorRelay.accept(error)
                         return .just([])
                     }
+                    .do(
+                        onSubscribe: { loadingRelay.accept(true) },
+                        onDispose: { loadingRelay.accept(false) }
+                    )
             }
-            .do(onNext: { _ in loadingRelay.accept(false) })
             .share(replay: 1)
 
         self.items = itemsObservable.asDriver(onErrorJustReturn: [])
