@@ -1,0 +1,4 @@
+interface:
+  display_name: "VIPER Architecture"
+  short_description: "Help with VIPER Architecture tasks"
+  default_prompt: "Use $arch-viper to handle VIPER Architecture work."

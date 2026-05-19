@@ -1,0 +1,4 @@
+interface:
+  display_name: "Workflow Orchestrator"
+  short_description: "Help with Workflow Orchestrator tasks"
+  default_prompt: "Use $orchestrator to handle Workflow Orchestrator work."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "DI Composition Root"
+  short_description: "Help with DI Composition Root tasks"
+  default_prompt: "Use $di-composition-root to handle DI Composition Root work."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Task Move"
+  short_description: "Help with Task Move tasks"
+  default_prompt: "Use $task-move to handle Task Move work."

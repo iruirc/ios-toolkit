@@ -1,0 +1,4 @@
+interface:
+  display_name: "Test Workflow"
+  short_description: "Help with Test Workflow tasks"
+  default_prompt: "Use $workflow-test to handle Test Workflow work."

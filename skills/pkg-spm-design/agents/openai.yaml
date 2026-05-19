@@ -1,0 +1,4 @@
+interface:
+  display_name: "SPM Package Design"
+  short_description: "Help with SPM Package Design tasks"
+  default_prompt: "Use $pkg-spm-design to handle SPM Package Design work."

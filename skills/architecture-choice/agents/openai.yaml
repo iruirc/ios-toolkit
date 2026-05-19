@@ -1,0 +1,4 @@
+interface:
+  display_name: "Architecture Choice"
+  short_description: "Help with Architecture Choice tasks"
+  default_prompt: "Use $architecture-choice to handle Architecture Choice work."

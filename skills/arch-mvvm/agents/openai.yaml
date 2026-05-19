@@ -1,0 +1,4 @@
+interface:
+  display_name: "MVVM Architecture"
+  short_description: "Help with MVVM Architecture tasks"
+  default_prompt: "Use $arch-mvvm to handle MVVM Architecture work."

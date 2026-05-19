@@ -1,0 +1,4 @@
+interface:
+  display_name: "Networking Architecture"
+  short_description: "Help with Networking Architecture tasks"
+  default_prompt: "Use $net-architecture to handle Networking Architecture work."

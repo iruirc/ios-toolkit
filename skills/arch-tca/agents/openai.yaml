@@ -1,0 +1,4 @@
+interface:
+  display_name: "TCA Architecture"
+  short_description: "Help with TCA Architecture tasks"
+  default_prompt: "Use $arch-tca to handle TCA Architecture work."

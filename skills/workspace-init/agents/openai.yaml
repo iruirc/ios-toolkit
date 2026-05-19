@@ -1,0 +1,4 @@
+interface:
+  display_name: "Workspace Init"
+  short_description: "Help with Workspace Init tasks"
+  default_prompt: "Use $workspace-init to handle Workspace Init work."

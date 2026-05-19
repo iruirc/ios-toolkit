@@ -1,0 +1,4 @@
+interface:
+  display_name: "Combine Reactive Patterns"
+  short_description: "Help with Combine Reactive Patterns tasks"
+  default_prompt: "Use $reactive-combine to handle Combine Reactive Patterns work."

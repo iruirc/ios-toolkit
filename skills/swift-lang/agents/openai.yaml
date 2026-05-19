@@ -1,0 +1,4 @@
+interface:
+  display_name: "Swift Language"
+  short_description: "Help with Swift Language tasks"
+  default_prompt: "Use $swift-lang to handle Swift Language work."

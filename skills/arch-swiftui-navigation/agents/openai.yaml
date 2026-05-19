@@ -1,0 +1,4 @@
+interface:
+  display_name: "SwiftUI Navigation"
+  short_description: "Help with SwiftUI Navigation tasks"
+  default_prompt: "Use $arch-swiftui-navigation to handle SwiftUI Navigation work."

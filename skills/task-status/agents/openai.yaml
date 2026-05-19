@@ -1,0 +1,4 @@
+interface:
+  display_name: "Task Status"
+  short_description: "Help with Task Status tasks"
+  default_prompt: "Use $task-status to handle Task Status work."

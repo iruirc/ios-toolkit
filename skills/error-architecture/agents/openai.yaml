@@ -1,0 +1,4 @@
+interface:
+  display_name: "Error Architecture"
+  short_description: "Help with Error Architecture tasks"
+  default_prompt: "Use $error-architecture to handle Error Architecture work."

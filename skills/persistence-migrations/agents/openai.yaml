@@ -1,0 +1,4 @@
+interface:
+  display_name: "Persistence Migrations"
+  short_description: "Help with Persistence Migrations tasks"
+  default_prompt: "Use $persistence-migrations to handle Persistence Migrations work."

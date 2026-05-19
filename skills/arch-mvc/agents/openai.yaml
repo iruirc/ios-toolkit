@@ -1,0 +1,4 @@
+interface:
+  display_name: "MVC Architecture"
+  short_description: "Help with MVC Architecture tasks"
+  default_prompt: "Use $arch-mvc to handle MVC Architecture work."

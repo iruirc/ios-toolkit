@@ -1,0 +1,4 @@
+interface:
+  display_name: "Clean Architecture"
+  short_description: "Help with Clean Architecture tasks"
+  default_prompt: "Use $arch-clean to handle Clean Architecture work."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Workspace Add"
+  short_description: "Help with Workspace Add tasks"
+  default_prompt: "Use $workspace-add to handle Workspace Add work."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "MVI Architecture"
+  short_description: "Help with MVI Architecture tasks"
+  default_prompt: "Use $arch-mvi to handle MVI Architecture work."

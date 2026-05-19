@@ -1,0 +1,4 @@
+interface:
+  display_name: "Stack Detection"
+  short_description: "Help with Stack Detection tasks"
+  default_prompt: "Use $stack-detect to handle Stack Detection work."

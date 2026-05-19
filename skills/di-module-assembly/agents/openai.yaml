@@ -1,0 +1,4 @@
+interface:
+  display_name: "DI Module Assembly"
+  short_description: "Help with DI Module Assembly tasks"
+  default_prompt: "Use $di-module-assembly to handle DI Module Assembly work."

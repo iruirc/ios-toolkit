@@ -1,0 +1,4 @@
+interface:
+  display_name: "Persistence Architecture"
+  short_description: "Help with Persistence Architecture tasks"
+  default_prompt: "Use $persistence-architecture to handle Persistence Architecture work."

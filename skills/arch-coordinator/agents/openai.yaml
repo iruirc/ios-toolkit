@@ -1,0 +1,4 @@
+interface:
+  display_name: "Coordinator Architecture"
+  short_description: "Help with Coordinator Architecture tasks"
+  default_prompt: "Use $arch-coordinator to handle Coordinator Architecture work."

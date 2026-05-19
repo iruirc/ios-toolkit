@@ -1,0 +1,4 @@
+interface:
+  display_name: "RxSwift Reactive Patterns"
+  short_description: "Help with RxSwift Reactive Patterns tasks"
+  default_prompt: "Use $reactive-rxswift to handle RxSwift Reactive Patterns work."

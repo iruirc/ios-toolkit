@@ -1,0 +1,4 @@
+interface:
+  display_name: "Factory DI"
+  short_description: "Help with Factory DI tasks"
+  default_prompt: "Use $di-factory to handle Factory DI work."

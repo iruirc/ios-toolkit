@@ -1,0 +1,4 @@
+interface:
+  display_name: "Epic Workflow"
+  short_description: "Help with Epic Workflow tasks"
+  default_prompt: "Use $workflow-epic to handle Epic Workflow work."

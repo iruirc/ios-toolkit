@@ -1,0 +1,4 @@
+interface:
+  display_name: "Feature Estimation"
+  short_description: "Help with Feature Estimation tasks"
+  default_prompt: "Use $feature-estimation to handle Feature Estimation work."

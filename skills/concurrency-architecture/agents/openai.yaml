@@ -1,0 +1,4 @@
+interface:
+  display_name: "Concurrency Architecture"
+  short_description: "Help with Concurrency Architecture tasks"
+  default_prompt: "Use $concurrency-architecture to handle Concurrency Architecture work."

@@ -1,0 +1,4 @@
+interface:
+  display_name: "OpenAPI Networking"
+  short_description: "Help with OpenAPI Networking tasks"
+  default_prompt: "Use $net-openapi to handle OpenAPI Networking work."

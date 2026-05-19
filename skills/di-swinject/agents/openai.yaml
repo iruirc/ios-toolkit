@@ -1,0 +1,4 @@
+interface:
+  display_name: "Swinject DI"
+  short_description: "Help with Swinject DI tasks"
+  default_prompt: "Use $di-swinject to handle Swinject DI work."

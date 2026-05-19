@@ -1,0 +1,4 @@
+interface:
+  display_name: "Task Creation"
+  short_description: "Help with Task Creation tasks"
+  default_prompt: "Use $task-new to handle Task Creation work."

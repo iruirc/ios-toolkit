@@ -1,0 +1,4 @@
+interface:
+  display_name: "Workspace Docs Regen"
+  short_description: "Help with Workspace Docs Regen tasks"
+  default_prompt: "Use $workspace-docs-regen to handle Workspace Docs Regen work."
