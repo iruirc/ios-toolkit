@@ -391,6 +391,54 @@ Pick **one** style per project; do not mix sync `send` and `async send` for the 
 
 Identical to Flavor A's `ItemListView`, replace `ItemListStore` with `ItemListViewModel`.
 
+## SwiftUI without `@Observable` (iOS 13–16)
+
+`@Observable` is iOS 17+. On an iOS 13–16 SwiftUI target the Store/ViewModel backing is the only thing that changes — `State`, `Intent`, `Reducer`, `Effect` and the reduce loop are identical. Swap `@Observable` for `ObservableObject` + a single `@Published private(set) var state`:
+
+```swift
+import Combine
+
+@MainActor
+final class ItemListStore: ObservableObject {
+    @Published private(set) var state = ItemListState()   // ONE @Published — the whole State
+    private let load: @Sendable () async throws -> [Item]
+    private var inFlight: Task<Void, Never>?
+
+    init(load: @Sendable @escaping () async throws -> [Item]) { self.load = load }
+
+    func send(_ intent: ItemListIntent) {                 // identical loop body to the @Observable Store
+        let effect = reduceItemList(&state, intent, load)
+        guard let effect else { return }
+        inFlight?.cancel()
+        inFlight = Task { [weak self] in
+            let next = await effect.run()
+            guard !Task.isCancelled else { return }
+            self?.send(next)
+        }
+    }
+
+    deinit { inFlight?.cancel() }
+}
+```
+
+View side: `@StateObject` when the View owns the store, `@ObservedObject` when it's injected.
+
+```swift
+struct ItemListView: View {
+    @StateObject private var store: ItemListStore   // owned here; use @ObservedObject if passed in
+    init(store: ItemListStore) { _store = StateObject(wrappedValue: store) }
+    // body identical to the @Observable sample — switch over store.state.phase
+}
+```
+
+Rules that stay the same:
+
+- **One** `@Published`, on `state`, `private(set)`. Not one `@Published` per field — that reintroduces multiple sources of truth (anti-pattern #2).
+- `@Published` fires on the whole `State`; SwiftUI still diffs the body. For pre-17 fine-grained UIKit/SwiftUI binding use the per-field `removeDuplicates` pattern (see "Avoiding over-render").
+- `@StateObject` (owned) vs `@ObservedObject` (injected) — mixing them recreates the store on every redraw.
+
+Same swap applies to Flavor B's `ItemListViewModel`.
+
 ## Side Effects & Async
 
 ### Where side effects live
