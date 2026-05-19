@@ -129,7 +129,12 @@ class FeatureViewModel: ObservableObject {
     @Published var items: [Item] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
+    private let service: ServiceProtocol
     private var cancellables = Set<AnyCancellable>()
+
+    init(service: ServiceProtocol) {
+        self.service = service
+    }
 
     func load() {
         isLoading = true
@@ -180,8 +185,9 @@ extension UITextField {
 func testItemsLoad() {
     let expectation = XCTestExpectation(description: "Items loaded")
     let viewModel = FeatureViewModel(service: MockService(items: [Item(id: 1)]))
+    var cancellables = Set<AnyCancellable>()
 
-    viewModel.items
+    viewModel.$items
         .dropFirst()
         .sink { items in
             XCTAssertEqual(items.count, 1)
@@ -189,7 +195,7 @@ func testItemsLoad() {
         }
         .store(in: &cancellables)
 
-    viewModel.viewDidLoad.send()
+    viewModel.load()
     wait(for: [expectation], timeout: 1.0)
 }
 ```
