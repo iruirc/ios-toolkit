@@ -27,13 +27,36 @@ Unidirectional state management for iOS. A single `State` value type holds every
 | Trivial CRUD form (3 fields, submit button) | ❌ MVVM with `@Published` properties is shorter |
 | Team has zero reducer experience and a 2-week deadline | ❌ Default to MVVM, migrate later |
 | You actually want exhaustive testing, dependency overrides, navigation as state | ❌ Use `arch-tca` — TCA gives all of that for free |
-| UIKit-only project with no Combine / async-await | ⚠️ Possible but boilerplate-heavy; prefer MVVM with Input/Output (`arch-mvvm`) |
+| UIKit-only, heavy table/collection or live text-input UI | ⚠️ Manual `render()` *is* the reconciler — cost is real; prefer MVVM (`arch-mvvm`). See "UIKit + MVI" below |
+| UIKit-only, genuine complex async state machine, UI mostly labels/buttons | ✅ Pure MVI Store + small `render()` is fine — see "UIKit + MVI" below |
 
 ## When Not to Use
 
 - **One-screen utility apps.** Reducer ceremony costs more than it saves.
 - **Reducer composition + dependency overrides + exhaustive tests are hard requirements.** That is `arch-tca`'s job — don't reimplement TCA by hand.
 - **Existing MVC/MVVM codebase, no migration appetite.** Keep what works; introduce MVI feature-by-feature only if the state-machine cost is real.
+
+## UIKit + MVI
+
+SwiftUI/Elm/React make `View = f(State)` cheap because the framework owns a **reconciler** that diffs the view tree and applies the minimum change. **UIKit has no reconciler.** On UIKit you hand-write `render(_ state:)` and *become* the reconciler — MVI's imperative mutation doesn't disappear, it moves from business logic into `render`.
+
+Concrete costs on UIKit:
+
+- **`render` re-applies everything** on any State change (even a `Bool`). Fine for labels; not for the rest.
+- **Tables/collections:** naive `render` → `reloadData()` loses scroll position, cancels in-flight cell image loads, kills animation. Avoiding it = `UI*DiffableDataSource` + manual snapshot diff — an extra layer on top of MVI.
+- **Text input:** every keystroke → Intent → State → `render` → reassigning `.text` breaks the cursor / IME composition. Needs a per-field `if new != old` guard.
+- **UI-only state** (firstResponder, selection, scroll offset, in-flight animation) lives in UIKit, not in `State`. Either mirror it all into `State` (sync hell) or break the single-source-of-truth invariant.
+- **No field-level diffing.** Either repaint all, or hand-write an `if newState.x != old.x` ladder per field — the bug-prone imperative code MVI was meant to remove, reintroduced in `render`.
+
+### Decision
+
+| UIKit screen shape | Choice |
+|---|---|
+| Heavy table/collection, or live text input | MVVM + `@Published` (`arch-mvvm`) — better cost/benefit |
+| Genuine complex async state machine (wizard, payment, live socket) **and** UI is mostly labels/buttons | Pure MVI Store + a small `render()` is fine |
+| In between | Per-field Combine binding: `store.$state.map(\.field).removeDuplicates().sink { … }` — pseudo field-level, mechanical but manual |
+
+Apple's own `UI*DiffableDataSource` (iOS 13) exists precisely because manual state→`reloadData()` is bad — treat it as the signal that the manual UIKit path has known costs, not as a blanket ban on MVI.
 
 ## Two Flavors
 
@@ -389,11 +412,66 @@ Identical to Flavor A's `ItemListView`, replace `ItemListStore` with `ItemListVi
 
 See `concurrency-architecture` for who owns Tasks across screens (Coordinator → ViewModel → UseCase) and how cancellation propagates.
 
+### The reduce loop engine: manual vs Combine pipeline (Flavor A)
+
+The reducer is the *logic*; the *engine* that pumps `Intent → reduce → State` is a separate choice. Two engines, both still MVI (single source of truth, unidirectional):
+
+- **Manual (default).** `send(_:)` calls `reduce` synchronously, runs the returned `Effect`, feeds the result back via `send`. This is the `ItemListStore` above. Imperative, one breakpoint in `reduce`, easy for any team.
+- **Combine pipeline.** `Intent`s go through a `PassthroughSubject`; `scan` accumulates `State` through the reducer; effects return new `Intent` publishers merged back in.
+
+```swift
+intentSubject
+    .flatMap { intent -> AnyPublisher<Intent, Never> in
+        switch intent {
+        case .viewAppeared, .retryTapped:
+            return load()                              // side effect
+                .map(Intent.itemsLoaded)
+                .catch { Just(Intent.loadFailed($0.localizedDescription)) }
+                .eraseToAnyPublisher()
+        default:
+            return Just(intent).eraseToAnyPublisher()  // pure intent passes through
+        }
+    }
+    .scan(ItemListState()) { state, intent in           // scan = functional reducer
+        var s = state; reduceItemList(&s, intent, …); return s
+    }
+    .assign(to: &$state)
+```
+
+**Default to the manual engine** — it covers ~90% of screens, reads top-to-bottom, debugs with a breakpoint. Reach for the Combine pipeline **only** when effects are genuinely long chains needing `debounce` (search field), `retry`, `timeout`, or request-merging — wrap that reactive piece so it still emits a plain `Intent`. The Combine pipeline is a niche power tool, not the baseline.
+
 ### Errors
 
 Model errors as part of `State` (e.g. `.failed(message)`), not as a separate `@Published var error: Error?`. Two sources of truth = MVI invariant violation.
 
 For mapping low-level errors (`URLError`, decoding) to user-facing `String` / typed enum, see `error-architecture` ("Mapping between layers").
+
+## Performance
+
+### Whole-`State` copy is cheap (COW)
+
+The common objection — "rebuilding the entire `State` struct on every `Intent` is wasteful" — is wrong in practice. `Array`/`String`/`Dictionary` are Copy-on-Write: the struct owns a pointer + refcount, not the buffer.
+
+- `var next = state` copies value fields + bumps refcounts on collection buffers. ~free.
+- A reducer that flips `state.phase = .loading` touches a stack value; the `[Item]` buffer is **not** copied — still shared with the previous `State`.
+- A buffer is deep-copied **only** on first mutation while `refcount > 1` (e.g. `state.items.append(x)`), and **only** that buffer — untouched collections stay shared.
+
+So you pay only for fields that actually change, at first mutation. Passing the whole snapshot down the loop is effectively free for unchanged parts. Do **not** hand-mutate UI/state to "avoid copying `State`" — that defeats COW and breaks the invariant.
+
+**Threading caveat:** COW's refcount check is not atomic across threads. Two threads doing `var x = state` concurrently is a data race COW won't save. Keep the Store serial — `@MainActor` (as in the samples) or a dedicated serial executor. This is *why* serious MVI stores process intents serially.
+
+### Avoiding over-render
+
+A fresh `State` per intent must not mean repainting the whole screen. Diff at the **data** level, never the UI level (comparing `[Item]` is cheap; comparing view frames is not).
+
+| Renderer | Granularity strategy |
+|---|---|
+| SwiftUI `@Observable` (iOS 17+) | Automatic — only sub-views reading a changed property re-evaluate. Nothing to do. `State : Equatable` still required for `List` diffing. |
+| SwiftUI pre-17 / Combine | Subscribe per field: `store.$state.map(\.field).removeDuplicates().sink { … }`. `removeDuplicates` is the key — unchanged field = no sink call. |
+| UIKit lists | `UI*DiffableDataSource` + snapshot — UIKit diffs and animates only changed cells; never `reloadData()` from `render`. |
+| UIKit, plain controls | Per-field guard in `render`: `if new.x != old.x { apply }`. Cache previous `State`; mind `defer { old = new }` ordering. |
+
+`State : Equatable` is the enabler for every row above — keep it.
 
 ## Testing
 
@@ -473,6 +551,8 @@ Inject closures (`@Sendable () async throws -> [Item]`) rather than protocol-con
 11. **Reducer reaching out to `self.something`.** Reducers are top-level pure functions or static methods. Capturing `self` inside a reducer makes it impossible to unit-test without instantiating the store.
 
 12. **Flavor A reducer that returns an `Effect` *and* mutates `state` based on the effect's not-yet-known result.** Reducers can only react to intents that have already been received. The result of an effect comes back as a new intent; the reducer handles it then.
+
+13. **Bypassing the loop with manual UI/state mutation "to avoid copying `State`".** The perceived cost is imaginary — COW makes whole-`State` copy ~free (see "Performance"). Hand-patching a label or a sibling var to dodge a reducer pass trades a non-cost for a broken single-source-of-truth invariant.
 
 ## When to Escalate to TCA
 
