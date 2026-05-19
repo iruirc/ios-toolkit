@@ -25,15 +25,15 @@ Before producing any user-facing string:
 
 Caching: resolve `<lang>` once per skill invocation; do not re-read CLAUDE-swift-toolkit.md per string.
 
-## Tool Loading (preamble)
+## Agent Tooling
 
-`AskUserQuestion` in the current Claude Code is loaded lazily. The **first action** the orchestrator performs on any run:
+Use `conventions/agent-tooling.md` for host-neutral interaction terms.
 
-```
-ToolSearch select:AskUserQuestion
-```
-
-Once the schema is loaded, `AskUserQuestion` may be called. If loading fails for any reason (older environment, tool missing), use a textual fallback: ask the question with numbered options in a regular message and parse the user's reply. Use the `fallback_profile_question` locale key for the prompt text.
+In this skill, `AskUserQuestion` / `AUQ` means the structured question
+mechanism. If the active host cannot provide a structured question tool, ask the
+question with numbered options in a regular message and parse the user's reply.
+Use the same locale key the AUQ call would have used, for example
+`fallback_profile_question`.
 
 Reply parsing: a digit, the profile name, or an unambiguous prefix (`bug`, `ref`, `test`).
 

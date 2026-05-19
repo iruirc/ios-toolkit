@@ -33,14 +33,18 @@ Step-task triggers cover sub-tasks of an epic: "create sub-task for 137", "step 
 
 ## Task.md Template
 
-The Task.md template is **NOT inlined in this skill body**. It lives in two physical files inside the plugin's `templates/task-md/` folder:
+The Task.md template is **NOT inlined in this skill body**. It lives in two physical files inside the toolkit's `templates/task-md/` folder:
 
 - `templates/task-md/task-root.md` — for root tasks (no `[STATUS]` field).
 - `templates/task-md/task-step.md` — for step tasks (includes `[STATUS]`).
 
-The skill **MUST load the template via the Read tool and write it via the Write tool, byte-for-byte**, with only `{{...}}` placeholder substitution. Do NOT retype the template inline, do NOT paraphrase it, do NOT translate any of its literal characters.
+Use `conventions/agent-tooling.md` for host-neutral file-access and question
+terms. The skill **MUST load the template via the file-read mechanism and write
+it via the file-write mechanism, byte-for-byte**, with only `{{...}}`
+placeholder substitution. Do NOT retype the template inline, do NOT paraphrase
+it, do NOT translate any of its literal characters.
 
-Section headings (`## 1. [Files]` … `## 6. [StackTrace]`), the `**Date:**` label, and bracketed metadata (`[TASK_TYPE]`, `[NEED_TEST]`, `[NEED_REVIEW]`, `[WORKFLOW_MODE]`, `[STATUS]`) are stable machine identifiers parsed by `orchestrator`, `task-status`, `task-move`, and `workflow-*`. Translating any of them silently breaks parsing across the toolkit. The Read+Write copy step guarantees they reach disk unmodified.
+Section headings (`## 1. [Files]` … `## 6. [StackTrace]`), the `**Date:**` label, and bracketed metadata (`[TASK_TYPE]`, `[NEED_TEST]`, `[NEED_REVIEW]`, `[WORKFLOW_MODE]`, `[STATUS]`) are stable machine identifiers parsed by `orchestrator`, `task-status`, `task-move`, and `workflow-*`. Translating any of them silently breaks parsing across the toolkit. The mechanical copy step guarantees they reach disk unmodified.
 
 Localize ONLY the **prose the user composes inside the sections** (their natural language). The section headings themselves stay exactly as the template provides them.
 
@@ -79,14 +83,17 @@ For reference, the templates contain these placeholders:
    - Visual/cosmetic ("change color", "move button", "update icon", "update localization string") → `NEED_TEST = false`.
    - `TASK_TYPE` is `REVIEW`, `TEST`, or `EPIC` → both flags become `false` (not applicable).
    - The user explicitly asked for the work without tests or without review.
-6. **Locate the template** in the plugin (Read the first existing path):
-   a. `~/.claude/plugins/cache/swift-toolkit/swift-toolkit/<version>/templates/task-md/task-root.md`
-   b. `~/.claude/plugins/marketplaces/swift-toolkit/templates/task-md/task-root.md`
+6. **Locate the template** (read the first existing path):
+   a. `<toolkit-root>/templates/task-md/task-root.md`
+   b. host-installed plugin/cache template path
+   c. Claude Code compatibility paths:
+      `~/.claude/plugins/cache/swift-toolkit/swift-toolkit/<version>/templates/task-md/task-root.md`
+      or `~/.claude/plugins/marketplaces/swift-toolkit/templates/task-md/task-root.md`
 7. **Read the template, substitute placeholders, write the result** as a single mechanical pass:
-   - Read the template via the Read tool. Do NOT retype it. Do NOT paraphrase it. Do NOT translate any character of it.
+   - Read the template via the file-read mechanism. Do NOT retype it. Do NOT paraphrase it. Do NOT translate any character of it.
    - Substitute `{{DATE}}`, `{{NNN_SLUG}}`, `{{TASK_TYPE}}`, `{{NEED_TEST}}`, `{{NEED_REVIEW}}` with the values determined above. Touch ONLY the `{{...}}` tokens; every other character is preserved exactly.
-   - Write the result via the Write tool to `<project>/Tasks/<STATUS>/<NNN-slug>/Task.md`.
-8. **Fill section bodies** with the user's prose using the Edit tool (one Edit per section). Append text under each H2 heading without changing the heading itself:
+   - Write the result via the file-write mechanism to `<project>/Tasks/<STATUS>/<NNN-slug>/Task.md`.
+8. **Fill section bodies** with the user's prose using the file-edit mechanism (one targeted edit per section). Append text under each H2 heading without changing the heading itself:
    - File paths, screenshot paths → `## 1. [Files]`
    - Context / current behavior / problem → `## 2. [Description]`
    - What to do / questions / reproduction steps → `## 3. [Task]`
@@ -118,18 +125,21 @@ For reference, the templates contain these placeholders:
 
 ## Process — step task (sub-task of an epic)
 
-1. **Identify the parent** — by number ("for 137"), slug ("for cross-platform-roadmap"), or current conversation context. Ambiguous → ask the user via `AskUserQuestion` using key `ambiguous_parent_question` with placeholder `{candidates}` (the matching folder names).
+1. **Identify the parent** — by number ("for 137"), slug ("for cross-platform-roadmap"), or current conversation context. Ambiguous → ask the user via the structured question mechanism using key `ambiguous_parent_question` with placeholder `{candidates}` (the matching folder names).
 2. **Find the parent folder**: `Tasks/**/137-*` (any STATUS).
 3. **Choose the step name**:
    - Numeric: find the max existing `N.step` in the parent (including sibling steps in nested epics), increment by 1 → `<N+1>.step`.
    - Named: the user said "step composition-model" → `composition-model.step`.
 4. **Decide `{{TASK_TYPE}}`, `{{NEED_TEST}}`, `{{NEED_REVIEW}}`** — same rules as the root-task process steps 4–5.
 5. **Decide `{{STATUS}}`** — default `PENDING`. Any other starting status requires an explicit user statement.
-6. **Locate the template** in the plugin (Read the first existing path):
-   a. `~/.claude/plugins/cache/swift-toolkit/swift-toolkit/<version>/templates/task-md/task-step.md`
-   b. `~/.claude/plugins/marketplaces/swift-toolkit/templates/task-md/task-step.md`
+6. **Locate the template** (read the first existing path):
+   a. `<toolkit-root>/templates/task-md/task-step.md`
+   b. host-installed plugin/cache template path
+   c. Claude Code compatibility paths:
+      `~/.claude/plugins/cache/swift-toolkit/swift-toolkit/<version>/templates/task-md/task-step.md`
+      or `~/.claude/plugins/marketplaces/swift-toolkit/templates/task-md/task-step.md`
 7. **Read the template, substitute placeholders, write the result** to `parent/<name>.step/Task.md` — exactly the same Read+substitute+Write pass as for root tasks, plus the `{{STATUS}}` placeholder. Touch ONLY `{{...}}` tokens.
-8. **Fill section bodies** via Edit, like for root tasks. Step tasks do NOT have their own STATUS-subfolder — they inherit their parent's folder.
+8. **Fill section bodies** via the file-edit mechanism, like for root tasks. Step tasks do NOT have their own STATUS-subfolder — they inherit their parent's folder.
 9. **Report** the created path.
 
 ## Rules

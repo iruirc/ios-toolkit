@@ -1,7 +1,7 @@
 ---
 name: swift-setup
 description: |
-  Configures swift-toolkit in an existing Swift project: creates CLAUDE-swift-toolkit.md from a template, inserts an @./ import line into CLAUDE.md, asks for the stack via AskUserQuestion, and creates the Tasks/ structure. Detects and migrates projects on the legacy single-file CLAUDE.md format.
+  Configures swift-toolkit in an existing Swift project: creates CLAUDE-swift-toolkit.md from a template, inserts an @./ import line into CLAUDE.md, asks for the stack via structured questions, and creates the Tasks/ structure. Detects and migrates projects on the legacy single-file CLAUDE.md format.
   Use when (en): "set up swift-toolkit", "configure swift-toolkit", "install toolkit in project", "add swift-toolkit to project", "init toolkit here", "/swift-setup"
   Use when (ru): "настрой swift-toolkit", "подключи swift-toolkit", "установи toolkit в проект", "добавь swift-toolkit к проекту", "инициализируй toolkit здесь", "/swift-setup"
   For generating a NEW Swift project from scratch use `@swift-toolkit:swift-init`.
@@ -28,15 +28,15 @@ The full resolution procedure used elsewhere — read `CLAUDE-swift-toolkit.md �
 
 Bilingual triggers are listed in the frontmatter `description:`. Both EN and RU phrases activate the skill.
 
-## Tool Loading (preamble)
+## Agent Tooling
 
-`AskUserQuestion` in the current Claude Code is loaded lazily. The **first action** the skill performs:
+Use `conventions/agent-tooling.md` for host-neutral interaction and file-access
+terms.
 
-```
-ToolSearch select:AskUserQuestion
-```
-
-Once the schema is loaded, `AskUserQuestion` may be called. If loading fails — use a textual fallback: numbered options in a regular message, parse the reply.
+In this skill, `AUQ` means the structured question mechanism. If the active host
+cannot provide a structured question tool, ask numbered options in a regular
+message and parse the reply. Locale keys with the `auq_` prefix remain the
+canonical prompt/option keys.
 
 ## State Detection
 
@@ -76,8 +76,11 @@ The skill's behavior is determined by the project state, computed from three che
    a. `templates/claude-toolkit-md/en.md` — toolkit file template (English-only; the file body is always EN regardless of `<lang>`).
    b. `templates/claude-md-stub/<lang>.md` — minimal CLAUDE.md stub (localized; body comment is in the user's language).
    Lookup paths (try in order):
-     - ~/.claude/plugins/cache/swift-toolkit/swift-toolkit/<latest-version>/templates/...
-     - ~/.claude/plugins/marketplaces/swift-toolkit/templates/...
+     - `<toolkit-root>/templates/...` (see `conventions/agent-tooling.md`)
+     - host-installed plugin/cache template paths
+     - Claude Code compatibility paths:
+       `~/.claude/plugins/cache/swift-toolkit/swift-toolkit/<latest-version>/templates/...`
+       or `~/.claude/plugins/marketplaces/swift-toolkit/templates/...`
    ↓ if neither path is available → render `error_template_not_found`. Stop.
 
 4. Branch by state:
