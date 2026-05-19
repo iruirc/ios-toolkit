@@ -67,11 +67,32 @@ public protocol HTTPClient {
 public struct HTTPRequest {
     public var url: URL
     public var method: HTTPMethod          // .get, .post, .put, .delete, .patch
+    public var queryItems: [URLQueryItem]
     public var headers: [String: String]
     public var body: Data?
     public var timeout: TimeInterval?
     public var cachePolicy: URLRequest.CachePolicy?
     public var idempotencyKey: String?     // see retry section
+
+    public init(
+        url: URL,
+        method: HTTPMethod,
+        queryItems: [URLQueryItem] = [],
+        headers: [String: String] = [:],
+        body: Data? = nil,
+        timeout: TimeInterval? = nil,
+        cachePolicy: URLRequest.CachePolicy? = nil,
+        idempotencyKey: String? = nil
+    ) {
+        self.url = url
+        self.method = method
+        self.queryItems = queryItems
+        self.headers = headers
+        self.body = body
+        self.timeout = timeout
+        self.cachePolicy = cachePolicy
+        self.idempotencyKey = idempotencyKey
+    }
 }
 
 public struct HTTPResponse {
@@ -204,15 +225,29 @@ actor TokenRefresher {
     func refresh() async throws -> AccessToken {
         if let task = refreshTask { return try await task.value }
         let task = Task<AccessToken, Error> { [api, storage] in
-            defer { storage.token = nil }
-            let new = try await api.refresh(refreshToken: storage.refreshToken!)
-            storage.token = new
-            return new
+            guard let refreshToken = storage.refreshToken else {
+                storage.token = nil
+                throw AuthRefreshError.missingRefreshToken
+            }
+
+            do {
+                let new = try await api.refresh(refreshToken: refreshToken)
+                storage.token = new
+                return new
+            } catch {
+                // Refresh failed: clear stale access token and let the app route to login.
+                storage.token = nil
+                throw error
+            }
         }
         refreshTask = task
         defer { refreshTask = nil }
         return try await task.value
     }
+}
+
+enum AuthRefreshError: Error {
+    case missingRefreshToken
 }
 
 struct AuthMiddleware: HTTPMiddleware {
