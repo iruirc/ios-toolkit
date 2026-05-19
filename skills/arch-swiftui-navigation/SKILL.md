@@ -257,6 +257,7 @@ To reset a tab to root when re-tapped — use `.onChange(of: selection)` and cle
 When navigation logic outgrows view-local `@State`, extract it into an `@Observable` Router. This is the SwiftUI equivalent of Coordinator — but reactive, not imperative.
 
 ```swift
+@MainActor
 @Observable
 final class AppRouter {
     var path = NavigationPath()
@@ -394,6 +395,7 @@ extension AppRouter {
 For cross-tab deep links (`myapp://profile` should switch to Profile tab + push), the Router holds tab selection too:
 
 ```swift
+@MainActor
 @Observable
 final class AppRouter {
     var selectedTab: Tab = .home

@@ -674,6 +674,7 @@ Apple's Observation framework. Minimal boilerplate, fine-grained updates. Best w
 ```swift
 import Observation
 
+@MainActor
 @Observable
 class FeatureViewModel {
     private let service: FeatureServiceProtocol
