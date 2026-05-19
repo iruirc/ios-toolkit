@@ -130,6 +130,16 @@ Algorithm:
           Skill stack-detect (task_files=scope, envelope=envelope, task_id=task_id)
        # stack-detect owns path-mapping (conventions/stack-axis-mapping.md)
        # + import-scan + per-axis chain; scan runs once
+   4.4a if scope is empty (## 1. [Files] absent, blank, or comment-only
+        AND no fallback affected paths):
+          # defer: do NOT AUQ even for partially-unresolved axes — files
+          # unknown yet (early Research/Reproduce/Analyze). Asking now would
+          # cache a guessed axis into ## 4. [Stack] and poison later stages.
+          stack := concatenated string of `resolved` (project-config hits only)
+          note `unresolved` as deferred (informational, passed to workflow-*)
+          skip 4.5 and 4.6; proceed to step 5
+          # re-resolved automatically on a later stage dispatch once Diagnose/
+          # Plan populates [Files] or the plan's affected paths exist
    4.5 for axis in unresolved:
           AUQ using locale key `auq_axis_<axis>_question`
               options := stack-detect Axis Catalog[axis]
