@@ -40,6 +40,7 @@ REVIEW-profile specifics (differences from other workflows):
 - `need_test`, `need_review` — ignored: this profile IS the review; `swift-toolkit:swift-reviewer` does not call itself recursively, and tests run inside the donor workflows (FEATURE/BUG/REFACTOR/TEST).
 - `mode` — `manual` / `auto` (see sections 3 and 4): only affects whether auto-move is confirmed with the user.
 - `stack`, `archive_paths` — standard (context for `swift-toolkit:swift-reviewer` and information about backups created by the orchestrator).
+- `lang` — project language for `Review.md` prose + the final report; structure (`[REVIEW_STATUS] = …`, headings) stays EN. See `conventions/i18n.md` → "Artifact authoring rule". Passed to `swift-toolkit:swift-reviewer`.
 
 ## 2. Stages
 

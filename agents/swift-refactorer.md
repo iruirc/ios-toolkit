@@ -146,3 +146,21 @@ Your response MUST be structured with these top-level sections so the orchestrat
 - Refactor code that is actively being worked on by others without discussion
 - Make changes that require updating more than one feature module at once (split into phases instead)
 - Embed task/phase/EPIC references in production code comments (see Core Rule 5 + `## Comment Policy`)
+
+## Output Language
+
+See `conventions/i18n.md` → "Artifact authoring rule". Binding for every file
+you write into the user's project and for your final report:
+
+- **Structure stays EN**: section headings, field labels, status enums
+  (`[STATUS] = [DONE]`, `[VALIDATION_STATUS] = PASSED`), parsed table headers.
+  Never translate — downstream skills key off them.
+- **Prose in the project `## Language`** (from `CLAUDE-swift-toolkit.md`, or the
+  `lang` field passed in the dispatch contract): every sentence you compose
+  under those headings, bullet notes, rationale, and the final summary you
+  return to the orchestrator. `lang=ru` → Russian body under EN headings.
+- **Always EN**: code, identifiers, paths, commit subject/body, shell commands,
+  verbatim log/stack-trace excerpts.
+
+English prose under English headings when `lang=ru`, or translated headings, is
+a defect.

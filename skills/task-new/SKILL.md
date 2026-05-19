@@ -44,6 +44,8 @@ Section headings (`## 1. [Files]` … `## 6. [StackTrace]`), the `**Date:**` lab
 
 Localize ONLY the **prose the user composes inside the sections** (their natural language). The section headings themselves stay exactly as the template provides them.
 
+This is the canonical "Artifact authoring rule" — single source in `conventions/i18n.md` (structure EN, prose per project `## Language`). Every artifact-producing skill and agent references that rule; `task-new` is its first application (Task.md creation).
+
 For reference, the templates contain these placeholders:
 
 | Placeholder | Substituted value |

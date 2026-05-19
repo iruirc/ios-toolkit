@@ -254,6 +254,7 @@ start_phase=2.3
 end_stage=null
 stage_scope=single|forward|all
 mode=manual|auto
+lang=ru|en
 stack=swiftui+combine+swinject
 need_test=true|false
 need_review=true|false
@@ -268,6 +269,8 @@ Semantics of `stage_scope`:
 `end_stage` — filled only when `--to <stage>` is used (e.g. "do 026 up to plan"); otherwise `null`.
 
 `start_phase` — for phase-level resume inside a stage (e.g. `Execute:phase=2.3`). Filled only when the trigger names a phase ("start from phase 2.3", "redo phase 2.3"); otherwise `null`.
+
+`lang` — the `<lang>` resolved by the Language Resolution section (`ru` | `en`; default `en`). Always filled. The subagent uses it for artifact **prose** and its final report; artifact **structure** stays EN regardless (see `conventions/i18n.md` → "Artifact authoring rule"). Passing it explicitly means workflow-* / subagents never re-read `CLAUDE-swift-toolkit.md` for output language.
 
 `archive_paths` — list of paths to backups already created in `_archive/` for stages that will be overwritten (filled before handing off control). Format: `[path1, path2, path3]`. Empty list = `[]`.
 
@@ -341,5 +344,11 @@ The workflow-* subagent receives:
 2. A short summary of previous stages (1–3 paragraphs): what was done, key decisions, open questions. Pulled from the most recent artifacts (`Research.md`, `Plan.md`).
 3. Stack: the `stack` value from the Outbound Contract.
 4. Mode: `mode` from the Outbound Contract.
+5. Lang: the `lang` value from the Outbound Contract (resolved once via the
+   Language Resolution section). The subagent writes artifact **prose** and its
+   final report in `lang`; artifact **structure** (headings, field labels,
+   status enums) stays EN. See `conventions/i18n.md` → "Artifact authoring
+   rule". Passing `lang` explicitly means the subagent never re-reads
+   `CLAUDE-swift-toolkit.md` to decide output language.
 
 **The stack does not need to be re-sent in full text:** the skill does not `Read` `CLAUDE-swift-toolkit.md` — stack, mode, and paths come from the context Claude Code typically loads at session start (when `CLAUDE.md` is present at the project root and imports `CLAUDE-swift-toolkit.md` via `@./`). The orchestrator parses this already-loaded context to resolve priorities.

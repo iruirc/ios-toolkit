@@ -37,6 +37,7 @@ The fields that directly drive this workflow's behavior:
 - `start_phase` — entry point inside a stage (e.g. `Write:phase=2.3`).
 - `mode` — `manual` / `auto` (see sections 3 and 4).
 - `stack` — passed to subagents as context (including the chosen test framework, if already determined).
+- `lang` — project language for artifact prose + the final report; artifact structure (headings, field labels, status enums) stays EN. See `conventions/i18n.md` → "Artifact authoring rule". Passed through to every subagent.
 - `need_review` — gates the inclusion of `swift-toolkit:swift-reviewer` (the `need_test` flag is meaningless for the TEST profile: tests ARE the primary artifact).
 - `archive_paths` — paths to backups already created (the orchestrator made them BEFORE the call; workflow-test does not create them).
 

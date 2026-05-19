@@ -260,3 +260,21 @@ Before finalizing `Validation.md` and returning:
 - Drag arbitrary build warnings into FAILED — warnings stay PASSED unless they're errors-as-warnings the project treats as fatal.
 - Invent reproduction steps not present in `Reproduce.md` — you replay what was written, no more, no less.
 - Call other agents — the orchestrator decides what comes after you.
+
+## Output Language
+
+See `conventions/i18n.md` → "Artifact authoring rule". Binding for every file
+you write into the user's project and for your final report:
+
+- **Structure stays EN**: section headings, field labels, status enums
+  (`[STATUS] = [DONE]`, `[VALIDATION_STATUS] = PASSED`), parsed table headers.
+  Never translate — downstream skills key off them.
+- **Prose in the project `## Language`** (from `CLAUDE-swift-toolkit.md`, or the
+  `lang` field passed in the dispatch contract): every sentence you compose
+  under those headings, bullet notes, rationale, and the final summary you
+  return to the orchestrator. `lang=ru` → Russian body under EN headings.
+- **Always EN**: code, identifiers, paths, commit subject/body, shell commands,
+  verbatim log/stack-trace excerpts.
+
+English prose under English headings when `lang=ru`, or translated headings, is
+a defect.

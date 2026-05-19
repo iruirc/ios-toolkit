@@ -37,6 +37,7 @@ The fields that directly drive this workflow's behavior:
 - `start_phase` — entry point inside a stage (e.g. `Refactor:phase=2.3`).
 - `mode` — `manual` / `auto` (see sections 3 and 4).
 - `stack` — passed to subagents as context.
+- `lang` — project language for artifact prose + the final report; artifact structure (headings, field labels, status enums) stays EN. See `conventions/i18n.md` → "Artifact authoring rule". Passed through to every subagent.
 - `need_test`, `need_review` — gate the inclusion of `swift-toolkit:swift-tester` and `swift-toolkit:swift-reviewer`.
 - `archive_paths` — paths to backups already created (the orchestrator made them BEFORE the call; workflow-refactor does not create them).
 
