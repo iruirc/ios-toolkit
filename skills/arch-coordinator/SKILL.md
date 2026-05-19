@@ -70,6 +70,28 @@ protocol Router: AnyObject {
     func setRoot(_ viewController: UIViewController, animated: Bool)
 }
 
+extension Router {
+    func push(_ viewController: UIViewController) {
+        push(viewController, animated: true)
+    }
+
+    func pop() {
+        pop(animated: true)
+    }
+
+    func present(_ viewController: UIViewController) {
+        present(viewController, animated: true)
+    }
+
+    func dismiss() {
+        dismiss(animated: true)
+    }
+
+    func setRoot(_ viewController: UIViewController) {
+        setRoot(viewController, animated: false)
+    }
+}
+
 class AppRouter: Router {
     private let navigationController: UINavigationController
 
