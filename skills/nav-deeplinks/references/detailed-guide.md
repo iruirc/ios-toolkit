@@ -79,6 +79,11 @@ enum Route: Equatable, Sendable {
 }
 
 enum DeepLinkParser {
+    private static let universalLinkHosts: Set<String> = [
+        "example.com",
+        "www.example.com"
+    ]
+
     static func parse(_ url: URL) -> Route? {
         guard let comps = URLComponents(url: url, resolvingAgainstBaseURL: false)
         else { return nil }
@@ -86,12 +91,19 @@ enum DeepLinkParser {
         // Normalize custom scheme and https:// to the same path shape.
         // myapp://item/42            -> host "item", path "/42"
         // https://example.com/item/42 -> path "/item/42"
+        guard let scheme = comps.scheme?.lowercased() else { return nil }
         let segments: [String]
-        if comps.scheme == "myapp" {
+        switch scheme {
+        case "myapp":
             segments = ([comps.host].compactMap { $0 })
                 + comps.path.split(separator: "/").map(String.init)
-        } else {
+        case "https":
+            guard let host = comps.host?.lowercased(),
+                  universalLinkHosts.contains(host)
+            else { return nil }
             segments = comps.path.split(separator: "/").map(String.init)
+        default:
+            return nil
         }
 
         switch segments.first {
@@ -254,6 +266,8 @@ func test_parse() {
     let cases: [(String, Route?)] = [
         ("myapp://item/42",                       .item(id: "42")),
         ("https://example.com/item/42",           .item(id: "42")),
+        ("https://evil.example/item/42",          nil),
+        ("ftp://example.com/item/42",             nil),
         ("https://example.com/item/",             nil),
         ("https://example.com/unknown",           nil),
         ("https://example.com/promo?code=ABC",    .promo(code: "ABC")),

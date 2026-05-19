@@ -102,8 +102,10 @@ URL shapes to the same `Route`.
 - Universal Link: `onContinueUserActivity(NSUserActivityTypeBrowsingWeb)` /
   `scene(_:continue:)` / `application(_:continue:restorationHandler:)` —
   extract `userActivity.webpageURL`.
-- Push (silent or tap): parse a `deeplink`/`url` key from `userInfo` →
-  same parser. Tap handled in `userNotificationCenter(_:didReceive:)`.
+- Notification tap: parse a `deeplink`/`url` key from `UNNotificationResponse`
+  in `userNotificationCenter(_:didReceive:)` → same parser. Silent/background
+  push may prefetch or update local state, but should not drive UI navigation
+  without a user action.
 - Quick Action: `UIApplicationShortcutItem.type` → `Route`.
 - Widget: `Link`/`widgetURL` → custom scheme → same funnel.
 - Spotlight / Handoff: `NSUserActivity` with your activity type → `Route`.

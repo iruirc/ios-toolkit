@@ -85,6 +85,7 @@ Consult the appropriate skill based on the architecture in use:
 - `arch-mvvm` — MVVM pattern implementation
 - `arch-coordinator` — Coordinator navigation pattern (UIKit)
 - `arch-swiftui-navigation` — SwiftUI navigation (NavigationStack/Path, Router, deep links, hybrid interop)
+- `nav-deeplinks` — implementing deep-link entry mechanics: scheme/App Links decision, AASA/Associated Domains, URL → typed Route parser, OS entry points, cold-start buffering, auth/onboarding gate; route-to-screen behavior stays in the chosen navigation skill
 - `arch-viper` — VIPER architecture
 - `arch-clean` — Clean Architecture with Use Cases
 - `arch-mvc` — MVC pattern

@@ -48,6 +48,7 @@ The skills live flat under `skills/`, but logically split into **seven groups**.
 |---|---|
 | [`arch-coordinator`](skills/arch-coordinator/SKILL.md) | UIKit-first projects. Child coordinators, Router, deep links, hybrid with SwiftUI via `UIHostingController`. |
 | [`arch-swiftui-navigation`](skills/arch-swiftui-navigation/SKILL.md) | SwiftUI-first projects. `NavigationStack` + `NavigationPath`, `@Observable Router`, `@Environment`-driven navigation, hybrid with UIKit. |
+| [`nav-deeplinks`](skills/nav-deeplinks/SKILL.md) | Entry side of deep links: scheme vs Universal Links/App Links, AASA, URL → typed Route parsing, OS entry points, cold-start buffering, auth/onboarding gates, deferred deep links, tests. |
 
 > TCA covers its own navigation (`@Presents`, `StackState`/`StackAction`) — `arch-coordinator` / `arch-swiftui-navigation` are not needed.
 
