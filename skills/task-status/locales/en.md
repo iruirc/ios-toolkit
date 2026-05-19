@@ -7,7 +7,7 @@ Task `{task_id}` not found.
 No ACTIVE tasks.
 
 ## error_profile_undefined
-Profile: undefined, AskUserQuestion required.
+Profile: undefined, structured question required.
 
 ## error_plan_unparseable
 Progress: cannot parse (Plan.md is corrupted).

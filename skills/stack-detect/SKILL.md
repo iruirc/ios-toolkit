@@ -9,7 +9,7 @@ description: |
 # Stack Detect
 
 Pure resolver invoked by `swift-toolkit:orchestrator` during Resolution. It
-performs **no** `AskUserQuestion`, writes **no** files, and mutates **no**
+performs **no** user questions, writes **no** files, and mutates **no**
 `Task.md`. It returns structured data; the orchestrator owns all user-facing
 interaction and caching.
 
@@ -87,7 +87,7 @@ unresolved = [axis, ...]            # subset of needed with no chain hit
 
 ## Invariants
 
-- Never calls `AskUserQuestion`. Never writes files.
+- Never asks the user. Never writes files.
 - `resolved` values are always members of the Axis Catalog for that axis.
 - `resolved.keys ∪ unresolved == needed` (every needed axis is accounted for).
 - `task_files` empty ⇒ `needed == may`, resolution still attempted from

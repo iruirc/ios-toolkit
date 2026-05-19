@@ -62,7 +62,7 @@ The fields that directly drive this workflow's behavior:
 
   The architect MUST apply the `feature-estimation` skill to produce an additional `## Estimation` section in `Plan.md` (baseline table + applied multipliers + range + assumptions + known unknowns). The estimation range is a hard-prerequisite for entering Execute — if Known Unknowns are still blocking, Plan stays open and the workflow returns `ask_user`.
 
-- **Execute** — `swift-toolkit:swift-developer` + `swift-toolkit:swift-tester` (if `need_test=true` in args). Implements the phases from `Plan.md` step by step, updating both progress layers as work proceeds. **MUST create one git commit per green phase** — autonomously, without `AskUserQuestion`.
+- **Execute** — `swift-toolkit:swift-developer` + `swift-toolkit:swift-tester` (if `need_test=true` in args). Implements the phases from `Plan.md` step by step, updating both progress layers as work proceeds. **MUST create one git commit per green phase** — autonomously, without a user prompt.
 
   Per-item flow inside a phase: complete one actionable item → tick its checkbox `- [ ]` → `- [x]` in the per-phase detail section of Plan.md. Per-phase flow: when all the phase's checkboxes are `- [x]` → build → run tests for the touched scope → flip the phase's row in the top-level progress table ⬜→✅ → `git add` the phase's files (including the Plan.md updates — both checkboxes and table) → `git commit`. Commit message format: `<task_id>: phase <N> — <short description>` (e.g. `001-feature: phase 2 — domain model`). If `git log` shows the project uses a different convention for similar tasks, follow that convention instead.
 
@@ -84,17 +84,17 @@ The fields that directly drive this workflow's behavior:
 
 ## 3. Manual mode
 
-After each completed stage the orchestrator asks the user via `AskUserQuestion` using the `stage_done_prompt` key from `locales/<lang>.md`, with placeholder `{stage}`.
+After each completed stage the orchestrator asks the user via the structured question mechanism using the `stage_done_prompt` key from `locales/<lang>.md`, with placeholder `{stage}`.
 
-Workflow-feature **does NOT call `AskUserQuestion` itself** — it returns control to the orchestrator after a stage completes (see section 5, Output Contract) with `next_recommended_action`. The decision to pause, continue, or capture discussions in `Questions.md` is the orchestrator's responsibility.
+Workflow-feature **does NOT ask the user itself** — it returns control to the orchestrator after a stage completes (see section 5, Output Contract) with `next_recommended_action`. The decision to pause, continue, or capture discussions in `Questions.md` is the orchestrator's responsibility.
 
-If the host CLI does not support `AskUserQuestion`, the orchestrator uses a textual fallback (numbered options + reply parsing). That is the orchestrator's responsibility, not workflow-feature's.
+If the active host has no structured question tool, the orchestrator uses a textual fallback (numbered options + reply parsing). That is the orchestrator's responsibility, not workflow-feature's.
 
 ## 4. Auto mode
 
 No pauses between stages. Workflow-feature runs the stages sequentially within `stage_scope` and returns the final result to the orchestrator in a single output.
 
-**Per-phase commits inside the Execute stage are autonomous** — created without `AskUserQuestion`, in both manual and auto modes. The only commit that always requires confirmation regardless of mode is a flow-level wrap commit (squash, merge, push) when the orchestrator initiates one. That confirmation is the orchestrator's responsibility, not workflow-feature's.
+**Per-phase commits inside the Execute stage are autonomous** — created without a user prompt, in both manual and auto modes. The only commit that always requires confirmation regardless of mode is a flow-level wrap commit (squash, merge, push) when the orchestrator initiates one. That confirmation is the orchestrator's responsibility, not workflow-feature's.
 
 ## 5. Output Contract
 
@@ -129,5 +129,5 @@ Based on this, the orchestrator decides: continue, abort, or ask the user.
 - Does NOT trigger `task-new` or `task-move` — that is not its scope.
 - Does NOT decide to skip stages — the orchestrator already passed `start_stage`, `end_stage`, `stage_scope`.
 - Does NOT create backups in `_archive/` — the orchestrator did so before handing off control; the paths are already in `archive_paths`.
-- Does NOT call `AskUserQuestion` — the orchestrator does that between stages in `manual` mode.
-- Does NOT **ask** the user before per-phase commits — workflow-feature creates them autonomously after each green phase, no `AskUserQuestion`. The orchestrator handles user-facing commit confirmation only for any flow-level wrap commit it initiates (squash, merge, push). **"Does NOT confirm with user" means "does not interrupt to ask", NOT "does not commit".** Failing to commit per phase loses incremental progress on interrupt and forces a re-do of the whole Execute stage.
+- Does NOT ask the user — the orchestrator does that between stages in `manual` mode.
+- Does NOT **ask** the user before per-phase commits — workflow-feature creates them autonomously after each green phase, with no user prompt. The orchestrator handles user-facing commit confirmation only for any flow-level wrap commit it initiates (squash, merge, push). **"Does NOT confirm with user" means "does not interrupt to ask", NOT "does not commit".** Failing to commit per phase loses incremental progress on interrupt and forces a re-do of the whole Execute stage.

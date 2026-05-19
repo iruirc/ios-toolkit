@@ -7,7 +7,7 @@
 Нет ACTIVE задач.
 
 ## error_profile_undefined
-Профиль: не определён, требуется AskUserQuestion.
+Профиль: не определён, требуется структурированный вопрос.
 
 ## error_plan_unparseable
 Прогресс: невозможно распарсить (Plan.md повреждён).

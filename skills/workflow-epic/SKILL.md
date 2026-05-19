@@ -75,7 +75,7 @@ Key fields and their EPIC-specific semantics:
 
 - **Execute** (only on branch A — Decomposition). Walks the `.step/` subfolders sequentially — by prefix order (`1.step` → `2.step` → … for numeric prefixes; for named ones — in the order locked in `Plan.md`). **Steps are NOT run in parallel** — strictly sequential, for predictability and clean state recovery.
 
-  **Per-step commits.** Workflow-epic itself does NOT create commits at the epic level. Each step's inner workflow-* (refactor/feature/bug/test) is responsible for its own per-phase commits, autonomously, without `AskUserQuestion`. Workflow-epic only ensures the inner workflow runs to completion; the commit history is built up step by step by the inner workflows.
+  **Per-step commits.** Workflow-epic itself does NOT create commits at the epic level. Each step's inner workflow-* (refactor/feature/bug/test) is responsible for its own per-phase commits, autonomously, without a user prompt. Workflow-epic only ensures the inner workflow runs to completion; the commit history is built up step by step by the inner workflows.
 
   For each step:
   - Read `<step>/Task.md`, extract `[STATUS]` and `[TASK_TYPE]`.
@@ -107,9 +107,9 @@ Key fields and their EPIC-specific semantics:
 
 ## 3. Manual mode
 
-After each stage (Research, Plan) and **after each step in Execute**, the orchestrator asks the user via `AskUserQuestion` using the `stage_done_prompt` key from `locales/<lang>.md`, with placeholders `{stage}` and `{step_id}`.
+After each stage (Research, Plan) and **after each step in Execute**, the orchestrator asks the user via the structured question mechanism using the `stage_done_prompt` key from `locales/<lang>.md`, with placeholders `{stage}` and `{step_id}`.
 
-Workflow-epic **does NOT call `AskUserQuestion` itself** — it returns control to the orchestrator after a stage or a step completes with `next_recommended_action`. The decision to pause, continue, or capture discussions in the epic's `Questions.md` is the orchestrator's responsibility.
+Workflow-epic **does NOT ask the user itself** — it returns control to the orchestrator after a stage or a step completes with `next_recommended_action`. The decision to pause, continue, or capture discussions in the epic's `Questions.md` is the orchestrator's responsibility.
 
 In push mode, pauses between the inner stages of a step are the responsibility of the nested orchestrator call (it dispatches the step as an ordinary task). Workflow-epic only pauses between **steps themselves**, not inside them.
 
@@ -164,5 +164,5 @@ Based on this, the orchestrator decides: continue, abort, ask the user, or dispa
 - Does NOT decide between pure_research vs decomposition — that decision is recorded inside `Research.md` under the `## Decomposition decision` heading during the Research stage; workflow-epic just reads it and acts.
 - Does NOT dispatch steps in parallel — only sequentially (for predictability and clean resume).
 - Does NOT create backups in `_archive/` — the orchestrator did so before handing off control; the paths are already in `archive_paths`.
-- Does NOT call `AskUserQuestion` — the orchestrator does that between stages and between steps in `manual` mode.
-- Does NOT create commits at the epic level — per-phase commits are the responsibility of each step's inner workflow-* (created autonomously without `AskUserQuestion`). The orchestrator handles user-facing commit confirmation only for any flow-level wrap commit it initiates after Done (squash, merge, push). **"Does NOT confirm with user" means "does not interrupt to ask"; the inner step workflows still commit per phase.**
+- Does NOT ask the user — the orchestrator does that between stages and between steps in `manual` mode.
+- Does NOT create commits at the epic level — per-phase commits are the responsibility of each step's inner workflow-* (created autonomously without a user prompt). The orchestrator handles user-facing commit confirmation only for any flow-level wrap commit it initiates after Done (squash, merge, push). **"Does NOT confirm with user" means "does not interrupt to ask"; the inner step workflows still commit per phase.**

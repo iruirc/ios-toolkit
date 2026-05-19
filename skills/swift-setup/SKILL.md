@@ -62,7 +62,7 @@ The skill's behavior is determined by the project state, computed from three che
 
 ```
 0. Ask the language (q0):
-   AskUserQuestion using key `auq_lang_label` with options from `auq_lang_options` (`en` / `ru`).
+   AUQ using key `auq_lang_label` with options from `auq_lang_options` (`en` / `ru`).
    Store answer as <lang>; subsequent prompts/reports use locales/<lang>.md.
    Q0 is shown bilingually. If skipped, default <lang> = `en`.
 

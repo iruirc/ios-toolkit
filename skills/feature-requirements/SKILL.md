@@ -136,7 +136,7 @@ Acceptance criteria from briefing:
 - [u2] ...
 ```
 
-**Idempotency:** if `## Requirements` already exists in `Research.md`, do not silently overwrite. Read the existing section, present it to the user via `AskUserQuestion`, ask: overwrite / merge / skip.
+**Idempotency:** if `## Requirements` already exists in `Research.md`, do not silently overwrite. Read the existing section, present it to the user via the structured question mechanism, ask: overwrite / merge / skip.
 
 ## Anti-patterns
 

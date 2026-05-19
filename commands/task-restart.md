@@ -9,4 +9,4 @@ $ARGUMENTS parsing:
 - `<id> <stage>` → start_stage = <stage>, stage_scope=forward (archives stage and all subsequent)
 - `<id> --full` → action=restart-full, stage_scope=all (full reset, archives ALL artifacts including Done.md)
 
-In manual mode — AskUserQuestion before archiving. For `--full` an additional confirmation if the task is in DONE/.
+In manual mode — structured confirmation before archiving. For `--full` an additional confirmation if the task is in DONE/.

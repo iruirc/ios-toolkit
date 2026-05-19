@@ -83,9 +83,9 @@ State Detection is **profile-aware** and **purely file-existence driven** — th
 
 Algorithm:
 
-1. Task folder is in `Tasks/DONE/` OR `Done.md` exists → the task is considered finished. `AskUserQuestion`: confirm a full restart (=`action=restart-full`), reopen (move back into `ACTIVE/`), or exit.
+1. Task folder is in `Tasks/DONE/` OR `Done.md` exists → the task is considered finished. AUQ: confirm a full restart (=`action=restart-full`), reopen (move back into `ACTIVE/`), or exit.
 2. Walk the columns of the row matching the current profile **left to right**; the first match determines `start_stage`. For BUG specifically: `Plan.md` wins over `Research.md`, which wins over `Reproduce.md`.
-3. `Plan.md` exists but its progress table is missing or unparseable → consider stage `Plan` complete; start at the next stage in the profile's sequence (FEATURE/EPIC: `Execute`; BUG: `Fix`; REFACTOR: `Refactor`; TEST: `Write`); for REVIEW (no next stage), ask explicitly via `AskUserQuestion`. Add a warning to the user.
+3. `Plan.md` exists but its progress table is missing or unparseable → consider stage `Plan` complete; start at the next stage in the profile's sequence (FEATURE/EPIC: `Execute`; BUG: `Fix`; REFACTOR: `Refactor`; TEST: `Write`); for REVIEW (no next stage), ask explicitly via AUQ. Add a warning to the user.
 4. **Inline-content note.** If `Task.md` carries embedded reproduce/research/analyze material but no artifact files exist in the task folder, State Detection still picks the first stage of the profile (per the rightmost column of the table). The user can override via the `confirm_dispatch` picker (Resolution Algorithm step 6) or by passing `--from <stage>`.
 
 **Invariant:** `start_stage` produced by State Detection is always a member of the target profile's stage list. Defense-in-depth validation runs in Resolution Algorithm step 5.5 regardless.
@@ -105,7 +105,7 @@ Algorithm:
 
 2. Resolve TASK_TYPE → profile
    • Read Task.md, extract the [TASK_TYPE] field
-   ↓ if missing → AskUserQuestion using key `fallback_profile_question`
+   ↓ if missing → AUQ using key `fallback_profile_question`
    ↓ profile = workflow-<TASK_TYPE.lower()>
 
 3. Resolve mode (priority high→low):
@@ -167,7 +167,7 @@ Algorithm:
            if recommended ∉ profile_stages:                                # State Detection itself was buggy
                recommended := profile_stages[0]                            # safe fallback to profile's first stage
            options := stage_picker_options(recommended, profile_stages)   ↓ see helper below
-           AskUserQuestion using key `auq_stage_recovery_question`
+           AUQ using key `auq_stage_recovery_question`
               placeholders: `{profile}`, `{invalid_stage}`, `{profile_stages_list}`
               options: `options` (rendered with recommended-suffix on `recommended`)
            → user picks stage S → start_stage := S, continue
@@ -178,13 +178,13 @@ Algorithm:
 
 6. Confirmation in manual mode:
    if mode == manual:
-       AskUserQuestion using key `confirm_dispatch` with placeholders `{profile}`, `{mode}`, `{stack}`, `{start_stage}`
+       AUQ using key `confirm_dispatch` with placeholders `{profile}`, `{mode}`, `{stack}`, `{start_stage}`
        options (in this order):
            1. locale key `confirm_dispatch_yes`     → dispatch as resolved
            2. locale key `auq_confirm_dispatch_pick_stage` → open the picker:
                   recommended := start_stage (the stage that arrived from step 5/5.5 — by construction valid)
                   options := stage_picker_options(recommended, profile_stages)
-                  AskUserQuestion using key `auq_stage_override_question`  (placeholder: `{profile}`)
+                  AUQ using key `auq_stage_override_question`  (placeholder: `{profile}`)
                   → user picks S → start_stage := S, then dispatch
                   → user picks Cancel → return {status: cancelled, reason: status_cancelled_user_no}
            3. locale key `confirm_dispatch_cancel`  → return {status: cancelled, reason: status_cancelled_user_no}
@@ -210,7 +210,7 @@ global `## Stack` → import scan. When
 `envelope.never == all` (review/epic), the project `## Stack` is read raw and
 passed as ambient informational context only — no chain, no AUQ.
 
-**Helper: `stage_picker_options(recommended, profile_stages)`** — deterministic picker, hard cap 4 total options (`AskUserQuestion` option-count limit, observed empirically; exceeding it causes the host CLI to silently truncate).
+**Helper: `stage_picker_options(recommended, profile_stages)`** — deterministic picker, hard cap 4 total options (structured question option-count limit, observed empirically; exceeding it causes some hosts to silently truncate).
 
 ```
 N := len(profile_stages)
@@ -291,15 +291,15 @@ Action after Resolution: invoke the `Skill` tool with `name` from the table and 
 
 ## Gating
 
-**Manual** (default) — pause after each stage with an `AskUserQuestion` (use key `stage_done_prompt` with placeholder `{stage}`) confirming the move to the next; discussions that don't fit in a single reply are recorded in the task's `Questions.md`.
+**Manual** (default) — pause after each stage with an AUQ (use key `stage_done_prompt` with placeholder `{stage}`) confirming the move to the next; discussions that don't fit in a single reply are recorded in the task's `Questions.md`.
 
 **Auto** — no pauses between stages.
 
-**Per-phase commits vs flow-level commits.** The "commit always confirmed with user" rule applies ONLY to flow-level wrap commits the orchestrator itself initiates (squash, merge, push) — these are user-confirmed regardless of mode. **Per-phase commits inside a workflow-* multi-phase stage (Refactor / Execute / Fix / Write) are autonomous** — the workflow-* skill creates one commit per green phase without `AskUserQuestion`, in both manual and auto modes. The orchestrator MUST NOT misread "does not confirm commit with user" inside workflow-* skills as "does not commit at all"; per-phase commits are mandatory for the phase invariant ("each phase independently buildable+test-passing+committed") to hold against interrupts.
+**Per-phase commits vs flow-level commits.** The "commit always confirmed with user" rule applies ONLY to flow-level wrap commits the orchestrator itself initiates (squash, merge, push) — these are user-confirmed regardless of mode. **Per-phase commits inside a workflow-* multi-phase stage (Refactor / Execute / Fix / Write) are autonomous** — the workflow-* skill creates one commit per green phase without a user prompt, in both manual and auto modes. The orchestrator MUST NOT misread "does not confirm commit with user" inside workflow-* skills as "does not commit at all"; per-phase commits are mandatory for the phase invariant ("each phase independently buildable+test-passing+committed") to hold against interrupts.
 
 **Backup before overwriting / removing an artifact:** copy to `Tasks/<STATUS>/<task_id>-*/_archive/<stage>-<timestamp>.md`, where `<timestamp>` is ISO-8601 without colons (`2026-04-25T143022`). The orchestrator makes the backup BEFORE calling workflow-* and passes the paths via `archive_paths` in the outbound contract.
 
-In `manual` mode, an `AskUserQuestion` confirmation is mandatory before the backup / removal.
+In `manual` mode, a structured confirmation is mandatory before the backup / removal.
 
 ## Stage Management
 
@@ -329,7 +329,7 @@ Action and archival semantics:
 | `restart <stage>` | Reset and rerun from stage to end | `<stage>` and all subsequent | from `<stage>` to end of profile |
 | `restart-full` | Full reset | all artifacts | from the profile's first stage |
 
-**All redo / restart operations in manual mode require an `AskUserQuestion` BEFORE archiving.**
+**All redo / restart operations in manual mode require a structured confirmation BEFORE archiving.**
 
 Command validation:
 - "only Plan" / "start from Plan" without `Research.md` (for profiles that have a preceding `Research`) → error using key `error_research_required` with placeholder `{stage}`.
@@ -351,4 +351,4 @@ The workflow-* subagent receives:
    rule". Passing `lang` explicitly means the subagent never re-reads
    `CLAUDE-swift-toolkit.md` to decide output language.
 
-**The stack does not need to be re-sent in full text:** the skill does not `Read` `CLAUDE-swift-toolkit.md` — stack, mode, and paths come from the context Claude Code typically loads at session start (when `CLAUDE.md` is present at the project root and imports `CLAUDE-swift-toolkit.md` via `@./`). The orchestrator parses this already-loaded context to resolve priorities.
+**The stack does not need to be re-sent in full text:** the skill does not read `CLAUDE-swift-toolkit.md` — stack, mode, and paths come from the context the active agent host typically loads at session start (when `CLAUDE.md` is present at the project root and imports `CLAUDE-swift-toolkit.md` via `@./`). The orchestrator parses this already-loaded context to resolve priorities.

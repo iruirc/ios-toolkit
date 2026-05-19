@@ -11,4 +11,4 @@ $ARGUMENTS parsing:
 
 The orchestrator archives the indicated stage's/phase's artifact under `_archive/` and re-runs only that stage/phase. Subsequent stages are not touched.
 
-In manual mode — AskUserQuestion before archiving.
+In manual mode — structured confirmation before archiving.

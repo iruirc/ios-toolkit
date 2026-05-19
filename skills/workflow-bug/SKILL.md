@@ -62,7 +62,7 @@ The fields that directly drive this workflow's behavior:
 
   The plan covers: the focused fix, a regression test (if `need_test=true`), and migration / compatibility steps if needed.
 
-- **Fix** — `swift-toolkit:swift-developer` + `swift-toolkit:swift-tester` (if `need_test=true` — for a bug, a regression test is mandatory: it locks in the scenario from `Reproduce.md` and prevents recurrence). Implements the phases from `Plan.md` step by step, updating both progress layers as work proceeds. **MUST create one git commit per green phase** — autonomously, without `AskUserQuestion`.
+- **Fix** — `swift-toolkit:swift-developer` + `swift-toolkit:swift-tester` (if `need_test=true` — for a bug, a regression test is mandatory: it locks in the scenario from `Reproduce.md` and prevents recurrence). Implements the phases from `Plan.md` step by step, updating both progress layers as work proceeds. **MUST create one git commit per green phase** — autonomously, without a user prompt.
 
   Per-item flow inside a phase: complete one actionable item → tick its checkbox `- [ ]` → `- [x]` in the per-phase detail section of Plan.md. Per-phase flow: when all the phase's checkboxes are `- [x]` → build → run tests for the touched scope → flip the phase's row in the top-level progress table ⬜→✅ → `git add` the phase's files (including the Plan.md updates — both checkboxes and table) → `git commit`. Commit message format: `<task_id>: phase <N> — <short description>` (e.g. `bug-042: phase 1 — root-cause fix in AuthMiddleware`). If `git log` shows the project uses a different convention for similar tasks, follow that convention instead.
 
@@ -82,17 +82,17 @@ The fields that directly drive this workflow's behavior:
 
 ## 3. Manual mode
 
-After each completed stage the orchestrator asks the user via `AskUserQuestion` using the `stage_done_prompt` key from `locales/<lang>.md`, with placeholder `{stage}`.
+After each completed stage the orchestrator asks the user via the structured question mechanism using the `stage_done_prompt` key from `locales/<lang>.md`, with placeholder `{stage}`.
 
-Workflow-bug **does NOT call `AskUserQuestion` itself** — it returns control to the orchestrator after a stage completes (see section 5, Output Contract) with `next_recommended_action`. The decision to pause, continue, or capture discussions in `Questions.md` is the orchestrator's responsibility.
+Workflow-bug **does NOT ask the user itself** — it returns control to the orchestrator after a stage completes (see section 5, Output Contract) with `next_recommended_action`. The decision to pause, continue, or capture discussions in `Questions.md` is the orchestrator's responsibility.
 
-If the host CLI does not support `AskUserQuestion`, the orchestrator uses a textual fallback (numbered options + reply parsing). That is the orchestrator's responsibility, not workflow-bug's.
+If the active host has no structured question tool, the orchestrator uses a textual fallback (numbered options + reply parsing). That is the orchestrator's responsibility, not workflow-bug's.
 
 ## 4. Auto mode
 
 No pauses between stages. Workflow-bug runs the stages sequentially within `stage_scope` and returns the final result to the orchestrator in a single output.
 
-**Per-phase commits inside the Fix stage are autonomous** — created without `AskUserQuestion`, in both manual and auto modes. The only commit that always requires confirmation regardless of mode is a flow-level wrap commit (squash, merge, push) when the orchestrator initiates one. That confirmation is the orchestrator's responsibility, not workflow-bug's.
+**Per-phase commits inside the Fix stage are autonomous** — created without a user prompt, in both manual and auto modes. The only commit that always requires confirmation regardless of mode is a flow-level wrap commit (squash, merge, push) when the orchestrator initiates one. That confirmation is the orchestrator's responsibility, not workflow-bug's.
 
 ## 5. Output Contract
 
@@ -127,5 +127,5 @@ Based on this, the orchestrator decides: continue, abort, or ask the user.
 - Does NOT trigger `task-new` or `task-move` — that is not its scope.
 - Does NOT decide to skip stages — the orchestrator already passed `start_stage`, `end_stage`, `stage_scope`.
 - Does NOT create backups in `_archive/` — the orchestrator did so before handing off control; the paths are already in `archive_paths`.
-- Does NOT call `AskUserQuestion` — the orchestrator does that between stages in `manual` mode.
-- Does NOT **ask** the user before per-phase commits — workflow-bug creates them autonomously after each green phase, no `AskUserQuestion`. The orchestrator handles user-facing commit confirmation only for any flow-level wrap commit it initiates (squash, merge, push). **"Does NOT confirm with user" means "does not interrupt to ask", NOT "does not commit".** Failing to commit per phase loses incremental progress on interrupt; the regression test, in particular, MUST be in its own commit so it can be cherry-picked or reverted independently of the fix.
+- Does NOT ask the user — the orchestrator does that between stages in `manual` mode.
+- Does NOT **ask** the user before per-phase commits — workflow-bug creates them autonomously after each green phase, with no user prompt. The orchestrator handles user-facing commit confirmation only for any flow-level wrap commit it initiates (squash, merge, push). **"Does NOT confirm with user" means "does not interrupt to ask", NOT "does not commit".** Failing to commit per phase loses incremental progress on interrupt; the regression test, in particular, MUST be in its own commit so it can be cherry-picked or reverted independently of the fix.
