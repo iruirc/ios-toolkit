@@ -214,6 +214,23 @@ The Repository internally maps Storage → Domain on read and Domain → Storage
 ### Core Data implementation
 
 ```swift
+extension NSPersistentContainer {
+    func performBackgroundTask<T>(
+        _ block: @escaping (NSManagedObjectContext) throws -> T
+    ) async throws -> T {
+        try await withCheckedThrowingContinuation { continuation in
+            performBackgroundTask { context in
+                do {
+                    let value = try block(context)
+                    continuation.resume(returning: value)
+                } catch {
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+}
+
 final class CoreDataItemRepository: ItemRepository {
     private let container: NSPersistentContainer
 
@@ -487,7 +504,8 @@ For GRDB this is a non-issue — you write the SQL `UPDATE` / `DELETE WHERE id I
 
 ### Atomicity
 
-A single Repository call should commit or roll back as a unit — no half-saved entities visible to readers. Use the framework primitive:
+Normal Repository write methods should commit or roll back as a unit — no
+half-saved entities visible to readers. Use the framework primitive:
 
 | Framework | Transaction primitive |
 |---|---|
@@ -529,10 +547,19 @@ For GRDB use `UPDATE ... SET column = ?`. For SwiftData mutate the property on t
 
 ### Batch writes
 
-Bulk inserts/updates (sync from server, import) need batching to keep memory bounded and progress visible:
+Bulk inserts/updates split into two contracts:
+
+- **All-or-nothing bulk write** — one transaction, one save. Use when callers
+  expect the whole operation to succeed or fail as a unit.
+- **Resumable import / sync** — chunked transactions. Use when progress matters
+  more than all-or-nothing semantics, and document that readers may observe
+  chunk-level progress.
+
+Chunked imports keep memory bounded and progress visible, but they are **not**
+atomic Repository writes:
 
 ```swift
-func upsertMany(_ items: [Item], batchSize: Int = 200) async throws {
+func importManyInBatches(_ items: [Item], batchSize: Int = 200) async throws {
     for chunk in items.chunked(into: batchSize) {
         try await container.performBackgroundTask { ctx in
             for item in chunk {
@@ -1079,18 +1106,26 @@ func test_concurrentUpsert_oneSucceedsOneConflicts() async throws {
     let edit1 = Item.makeFixture(id: id, title: "device A", expectedVersion: 1)
     let edit2 = Item.makeFixture(id: id, title: "device B", expectedVersion: 1)
 
-    async let r1: Void = try repo.upsert(edit1)
-    async let r2: Void = try repo.upsert(edit2)
+    func capture(_ operation: @escaping () async throws -> Void) async -> Result<Void, Error> {
+        do {
+            try await operation()
+            return .success(())
+        } catch {
+            return .failure(error)
+        }
+    }
 
-    let outcomes = await [
-        Result { try await r1 },
-        Result { try await r2 }
-    ]
+    async let r1: Result<Void, Error> = capture { try await repo.upsert(edit1) }
+    async let r2: Result<Void, Error> = capture { try await repo.upsert(edit2) }
 
-    let successes = outcomes.compactMap { try? $0.get() }
-    let conflicts = outcomes.compactMap { result -> Bool? in
+    let outcomes = await [r1, r2]
+    let successes = outcomes.filter { result in
+        if case .success = result { return true }
+        return false
+    }
+    let conflicts = outcomes.filter { result in
         if case .failure(let e as RepositoryError) = result, case .conflict = e { return true }
-        return nil
+        return false
     }
 
     XCTAssertEqual(successes.count, 1)
