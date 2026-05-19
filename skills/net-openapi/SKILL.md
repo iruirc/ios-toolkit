@@ -33,7 +33,7 @@ Apple-supported (announced WWDC 2023, GitHub `apple/swift-openapi-generator`):
 - Reads `openapi.yaml` (or `.json`), produces `Types.swift`, `Client.swift`, `Server.swift`.
 - **Modular transports** — generator emits a `ClientTransport` protocol; you pick a transport package (URLSession, AsyncHTTPClient, custom).
 - Async/await native; no Combine/RxSwift in the generated surface.
-- Supports OpenAPI **3.0 and 3.1** (not 2.0 / Swagger).
+- Supports OpenAPI **3.0 and 3.1**, with **preliminary 3.2 support** in current 1.x releases. OpenAPI 2.0 / Swagger is not supported.
 
 **Three packages you'll add:**
 
@@ -110,6 +110,12 @@ filter:
 **Why `accessModifier: internal`:** generated types are an implementation detail of `MyAPIClient`. The rest of the app sees only your `APIClient` protocol and Domain types. **Never** make generated types `public`.
 
 **`filter`** lets you generate a subset for incremental adoption — useful when migrating a hand-written client endpoint by endpoint.
+
+**Version discipline:** the snippets in this skill reflect the 1.x runtime shape
+at the time of writing. Pin generator/runtime/transport versions in
+`Package.resolved`, and when upgrading, compile-check custom
+`ClientMiddleware` / `ClientTransport` signatures against the protocols emitted
+by the pinned generator before copying examples forward.
 
 ## What Gets Generated
 
