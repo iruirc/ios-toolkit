@@ -4,7 +4,7 @@
 Не Swift-проект (не найден `.xcodeproj`, `.xcworkspace` или `Package.swift`). Для генерации нового используй `@swift-toolkit:swift-init`.
 
 ## error_template_not_found
-Шаблон CLAUDE-swift-toolkit.md плагина не найден. Проверь установку swift-toolkit (`~/.claude/plugins/cache/` или `~/.claude/plugins/marketplaces/`).
+Шаблон CLAUDE-swift-toolkit.md не найден. Проверь `<toolkit-root>/templates/` или установленные plugin/cache-шаблоны текущего хоста.
 
 ## auq_create_tasks_structure
 Создать `Tasks/` структуру для управления задачами? [Yes / No]
