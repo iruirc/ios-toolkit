@@ -393,7 +393,7 @@ class FeatureCoordinatorTests: XCTestCase {
     @MainActor
     func test_itemSelected_createsChildCoordinator() {
         sut.start()
-        sut.viewModel.onItemSelected?(Item(id: "1"))
+        mockModuleFactory.viewModel.onItemSelected?(Item(id: "1"))
 
         XCTAssertEqual(sut.childCoordinators.count, 1)
         XCTAssertTrue(mockCoordinatorFactory.lastCreatedCoordinator is DetailCoordinator)
@@ -413,6 +413,8 @@ class MockRouter: Router {
     func setRoot(_ vc: UIViewController, animated: Bool) {}
 }
 ```
+
+Keep the coordinator's `view` and `viewModel` private. Tests should trigger navigation through the fake module returned by `MockFeatureModuleFactory`, not by exposing coordinator internals.
 
 ## Common Mistakes
 
