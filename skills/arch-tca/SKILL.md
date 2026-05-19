@@ -21,7 +21,7 @@ Unidirectional, reducer-based state management for SwiftUI. State is a value typ
 
 | Scenario | Use TCA |
 |---|---|
-| Pure SwiftUI app, iOS 16+ (ideally 17+ for new observation API) | ✅ |
+| Pure SwiftUI app, iOS 13+ (ideally 17+ for system Observation) | ✅ |
 | Team already fluent with TCA / Elm / Redux | ✅ |
 | Heavy state machines, complex multi-step flows, undo/redo | ✅ |
 | Need exhaustive, deterministic tests of every state transition | ✅ |
@@ -33,12 +33,12 @@ Unidirectional, reducer-based state management for SwiftUI. State is a value typ
 
 **Rule of thumb:** TCA is worth its weight when the project lives for years, has a rich domain, and the team values exhaustive tests over implementation speed. For everything else, default to MVVM (`arch-mvvm`) or Clean (`arch-clean`).
 
-**Versions assumed:** TCA 1.7+ baseline (macro-based `@Reducer` + `@ObservableState`). `@Shared` examples require 1.10+. The library supports iOS 16+; the new observation API works natively on iOS 17+, with a backport for iOS 16.
+**Versions assumed:** TCA 1.7+ baseline (macro-based `@Reducer` + `@ObservableState`). `@Shared` examples require 1.10+. Toolkit examples target modern SwiftUI and read best on iOS 16+, but TCA's observation integration supports iOS 13-16 through the Perception backport. System Observation is native on iOS 17+.
 
 | OS | Observation property wrapper |
 |---|---|
 | iOS 17+ / macOS 14+ | `@Bindable var store: StoreOf<Feature>` (system Observation) |
-| iOS 16 / macOS 13 | `@Perception.Bindable var store: StoreOf<Feature>` + wrap body in `WithPerceptionTracking { … }` (TCA backport) |
+| iOS 13-16 / older SwiftUI OSes | `@Perception.Bindable var store: StoreOf<Feature>` + wrap body in `WithPerceptionTracking { … }` (TCA backport) |
 
 Use the system `@Bindable` if your minimum is iOS 17+, otherwise use the backport everywhere — don't mix.
 
@@ -244,7 +244,7 @@ struct FeatureView: View {
 Errors should not be modeled as a free-standing `String?` bound directly to `.alert`. Use `@Presents var alert: AlertState<Action.Alert>?` (see Navigation → Alerts below) — it integrates with the reducer, is testable, and dismisses correctly.
 
 Key points:
-- `@Bindable var store` (iOS 17+) or `@Perception.Bindable` (iOS 16 backport, requires wrapping body in `WithPerceptionTracking { … }`).
+- `@Bindable var store` (iOS 17+) or `@Perception.Bindable` (iOS 13-16 backport, requires wrapping body in `WithPerceptionTracking { … }`).
 - `store.send(action)` to dispatch.
 - `$store.someField.sending(\.actionCase)` to bridge a SwiftUI `Binding` to a custom action case without `BindingReducer` — useful for one-off bindings (the case must take the field's type as its single payload).
 - Read scalar state as `store.foo` (the macro routes through observation).
