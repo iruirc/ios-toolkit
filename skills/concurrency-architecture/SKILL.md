@@ -360,16 +360,22 @@ container.register(PhotoUploader.self, scope: .singleton) { _ in
     PhotoUploader(api: ..., persistence: ...)
 }
 
-// Service owns its own Tasks
-final class PhotoUploader {
+// Stateful app service owns its own Tasks
+actor PhotoUploader {
     private var inflight: [UUID: Task<Void, Error>] = [:]
 
     func enqueue(_ photo: Photo) {
         let id = photo.id
+        inflight[id]?.cancel()
         inflight[id] = Task { [weak self] in
-            try await self?.upload(photo)
-            self?.inflight.removeValue(forKey: id)
+            guard let self else { return }
+            defer { Task { await self.removeInFlight(id) } }
+            try await self.upload(photo)
         }
+    }
+
+    private func removeInFlight(_ id: UUID) {
+        inflight[id] = nil
     }
 }
 
@@ -378,13 +384,14 @@ final class PhotoUploader {
 final class ComposeViewModel {
     let uploader: PhotoUploader   // injected
     func tapSend(_ photo: Photo) {
-        uploader.enqueue(photo)
+        Task { await uploader.enqueue(photo) }
         coordinator.dismiss()      // safe — uploader owns the Task
     }
 }
 ```
 
-If `PhotoUploader` itself accumulates state (`inflight`), promote it to `actor`. If it's a thin adapter delegating to URLSession background config, keep it as a class (URLSession does the survival).
+If the service has no mutable state and only delegates to a background `URLSession`,
+keep it as a class. Once it tracks shared state like `inflight`, make it an actor.
 
 ## DI and Concurrency Bootstrap
 
