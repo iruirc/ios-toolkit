@@ -46,8 +46,6 @@ The examples below use **async/await** as the default. Combine and callback vari
 ```swift
 // MARK: - View
 protocol FeatureViewProtocol: AnyObject {
-    var presenter: FeaturePresenterProtocol! { get set }
-
     func showItems(_ items: [FeatureItemViewModel])
     func showLoading()
     func hideLoading()
@@ -57,8 +55,6 @@ protocol FeatureViewProtocol: AnyObject {
 // MARK: - Presenter
 protocol FeaturePresenterProtocol: AnyObject {
     var view: FeatureViewProtocol? { get set }
-    var interactor: FeatureInteractorProtocol! { get set }
-    var router: FeatureRouterProtocol! { get set }
 
     func viewDidLoad()
     func didSelectItem(at index: Int)
@@ -74,6 +70,11 @@ protocol FeatureRouterProtocol: AnyObject {
     func navigateToDetail(for item: FeatureEntity)
     func dismiss()
 }
+
+@MainActor
+protocol DetailModuleFactory {
+    func makeDetailModule(item: FeatureEntity) -> UIViewController
+}
 ```
 
 ### View (UIViewController — passive)
@@ -82,11 +83,18 @@ Only renders what Presenter tells it to. No business logic, no data transformati
 
 ```swift
 class FeatureViewController: UIViewController, FeatureViewProtocol {
-    var presenter: FeaturePresenterProtocol!
+    private let presenter: FeaturePresenterProtocol
 
     private let tableView = UITableView()
     private let loadingIndicator = UIActivityIndicatorView()
     private var items: [FeatureItemViewModel] = []
+
+    init(presenter: FeaturePresenterProtocol) {
+        self.presenter = presenter
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) { fatalError("Use init(presenter:)") }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -132,11 +140,16 @@ Receives user events from View, requests data from Interactor, formats results f
 @MainActor
 final class FeaturePresenter: FeaturePresenterProtocol {
     weak var view: FeatureViewProtocol?
-    var interactor: FeatureInteractorProtocol!
-    var router: FeatureRouterProtocol!
+    private let interactor: FeatureInteractorProtocol
+    private let router: FeatureRouterProtocol
 
     private var items: [FeatureEntity] = []
     private(set) var fetchTask: Task<Void, Never>?
+
+    init(interactor: FeatureInteractorProtocol, router: FeatureRouterProtocol) {
+        self.interactor = interactor
+        self.router = router
+    }
 
     func viewDidLoad() {
         view?.showLoading()
@@ -273,14 +286,14 @@ Handles all navigation. Creates and wires the next VIPER module.
 ```swift
 class FeatureRouter: FeatureRouterProtocol {
     weak var viewController: UIViewController?
-    private let container: Resolver
+    private let detailFactory: DetailModuleFactory
 
-    init(container: Resolver) {
-        self.container = container
+    init(detailFactory: DetailModuleFactory) {
+        self.detailFactory = detailFactory
     }
 
     func navigateToDetail(for item: FeatureEntity) {
-        let detailVC = DetailAssembly.build(container: container, item: item)
+        let detailVC = detailFactory.makeDetailModule(item: item)
         viewController?.navigationController?.pushViewController(detailVC, animated: true)
     }
 
@@ -297,25 +310,25 @@ Creates and connects all components:
 ```swift
 enum FeatureAssembly {
     @MainActor
-    static func build(container: Resolver) -> UIViewController {
-        let view = FeatureViewController()
-        let presenter = FeaturePresenter()
-        let interactor = FeatureInteractor(
-            service: container.resolve(FeatureServiceProtocol.self)!
-        )
-        let router = FeatureRouter(container: container)
+    static func build(
+        service: FeatureServiceProtocol,
+        detailFactory: DetailModuleFactory
+    ) -> UIViewController {
+        let interactor = FeatureInteractor(service: service)
+        let router = FeatureRouter(detailFactory: detailFactory)
+        let presenter = FeaturePresenter(interactor: interactor, router: router)
+        let view = FeatureViewController(presenter: presenter)
 
         // Wire
-        view.presenter = presenter
         presenter.view = view
-        presenter.interactor = interactor
-        presenter.router = router
         router.viewController = view
 
         return view
     }
 }
 ```
+
+If the app uses Swinject or another DI container, resolve dependencies in the Composition Root before calling `FeatureAssembly.build(...)`. Do not pass `Resolver`/container into Routers, Presenters, or Interactors; that turns the module into a service locator and hides required dependencies from tests.
 
 > The async/await variant has no `interactor.presenter = presenter` line — there is no Output protocol to wire. Add that line back **only** when using the legacy callback Interactor.
 
@@ -351,14 +364,12 @@ final class FeaturePresenterTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
-        sut = FeaturePresenter()
         mockView = MockFeatureView()
         mockInteractor = MockFeatureInteractor()
         mockRouter = MockFeatureRouter()
 
+        sut = FeaturePresenter(interactor: mockInteractor, router: mockRouter)
         sut.view = mockView
-        sut.interactor = mockInteractor
-        sut.router = mockRouter
     }
 
     func testViewDidLoad_fetchesAndShowsItems() async {
@@ -458,3 +469,4 @@ For the legacy callback Interactor, tests use `MockInteractorOutput` injected vi
 7. **Long-running Interactor work without cancellation** — Store the Presenter's fetch `Task` and cancel it in `deinit` (or on `viewWillDisappear`) so background work doesn't outlive the screen and overwrite a fresh module's state.
 8. **`DispatchQueue.main.async` inside `@MainActor` Presenter** — Once the Presenter is `@MainActor`, view updates after `await` are already on the main thread. Manual hopping is redundant and confuses concurrency expectations.
 9. **Mixing async styles inside one module** — Don't expose `async throws` and a Combine `Publisher` from the same Interactor protocol. Pick one (per the table at the top) and keep the module consistent; cross-style adapters belong at module boundaries, not inside.
+10. **Passing the DI container into Router/Presenter/Interactor** — Assemblies may use a container, but VIPER components should receive explicit dependencies or factories. Container access inside the module is service locator by another name.
