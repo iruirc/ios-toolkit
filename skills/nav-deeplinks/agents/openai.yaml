@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deep Links & Universal Links"
+  short_description: "Help with Deep Links & Universal Links tasks"
+  default_prompt: "Use $nav-deeplinks to handle Deep Links & Universal Links work."

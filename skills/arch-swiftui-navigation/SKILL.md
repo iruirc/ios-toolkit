@@ -372,6 +372,11 @@ Use this when state is genuinely local to one flow. Beyond ~5 actions, switch to
 
 URL → Route enum → mutate `NavigationPath`. The Router (or App) owns the parsing.
 
+> The `DeepLinkParser`, Universal Links / AASA setup, every OS entry point,
+> cold-start buffering, and the auth/onboarding gate are owned by the
+> `nav-deeplinks` skill. This section only shows the SwiftUI side: applying a
+> parsed `Route` to `NavigationPath` / tab selection.
+
 ```swift
 extension AppRouter {
     func handle(_ url: URL) {

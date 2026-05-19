@@ -98,6 +98,8 @@ Default an item to **Applicable** unless you have a concrete reason to mark it N
 
 ### Deep links & navigation
 
+<!-- Design-time mechanics (parser, AASA, entry points, cold-start, auth gate): `nav-deeplinks`. This is verification-time only. -->
+
 - [ ] Deep link path defined and registered
 - [ ] Backward compatibility of pre-existing links preserved
 - [ ] State reset vs preserve policy decided (deep link mid-flow)

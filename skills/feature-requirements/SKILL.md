@@ -12,7 +12,8 @@ A briefing describes the business goal. The engineering task is to discover what
 > - `feature-estimation` — multiplies baseline by Secondary count and known-unknowns count
 > - `mobile-ops-checklist` — Secondary items overlap with cross-cutting ops concerns; this skill is the *design-time* checkpoint, `mobile-ops-checklist` is the *validation-time* one
 > - `error-architecture` — when designing how Secondary error states surface to the UI
-> - `arch-swiftui-navigation` / `arch-coordinator` — deep-link entry points
+> - `nav-deeplinks` — deep-link / universal-link entry-side design (parser, entry points, cold-start, auth gate)
+> - `arch-swiftui-navigation` / `arch-coordinator` — how a parsed deep-link Route reaches a screen
 > - `concurrency-architecture` — offline/sync Secondary behaviors
 
 ## When to use

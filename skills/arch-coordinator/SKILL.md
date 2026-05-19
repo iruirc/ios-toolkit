@@ -329,6 +329,11 @@ class MainTabCoordinator: BaseCoordinator {
 
 ## Deep Link Handling
 
+> URL parsing, Universal Links / AASA, OS entry points, cold-start buffering,
+> and the auth/onboarding gate are owned by the `nav-deeplinks` skill. It
+> produces a typed `DeepLink`/`Route`; this section only shows how a coordinator
+> *acts* on one.
+
 ```swift
 class AppCoordinator: BaseCoordinator {
     func handleDeepLink(_ deepLink: DeepLink) {
