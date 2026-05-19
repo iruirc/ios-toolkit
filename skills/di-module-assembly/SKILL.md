@@ -338,8 +338,11 @@ appCoordinator.start()
 
 Facade over Swinject that conforms to all feature dependency protocols:
 
+The facade itself stays **nonisolated**. UI construction remains `@MainActor`
+on `Assembly`, `ModuleFactory`, `CoordinatorFactory`, and Coordinator methods;
+the dependency container may also be used by background services.
+
 ```swift
-@MainActor
 final class AppDependencyContainer: AppDependencies {
 
     private let container = Container()
@@ -389,7 +392,6 @@ final class AppDependencyContainer: AppDependencies {
 `AppDependencyContainer` can be implemented with `lazy var` fields instead of Swinject — the external contract (`AppDependencies` + per-feature `*FeatureDependencies`) is identical, the rest of the chain (`CoordinatorFactory`, `ModuleFactory`, `Assembly`) is unchanged.
 
 ```swift
-@MainActor
 final class AppDependencyContainer: AppDependencies {
     lazy var userService: UserServiceProtocol = UserService(networkClient: networkClient)
     lazy var analyticsService: AnalyticsServiceProtocol = AnalyticsService()

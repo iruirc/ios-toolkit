@@ -80,8 +80,11 @@ The CR can be implemented in three ways — through a runtime DI framework (Swin
 
 ### Manual AppDependencyContainer — full example
 
+Keep `AppDependencyContainer` itself **nonisolated**. Background services and
+repositories may resolve dependencies too; put `@MainActor` on UI factories,
+coordinators, routers, and app-scoped UI state instead.
+
 ```swift
-@MainActor
 final class AppDependencyContainer: AppDependencies {
 
     // App-scope: lazy var — created on first access, lives until the app is killed
@@ -197,7 +200,6 @@ Two approaches:
 **A) Wait on the splash screen**
 
 ```swift
-@MainActor
 final class AppDependencyContainer {
     func bootstrapAsync() async throws {
         registerServices()
