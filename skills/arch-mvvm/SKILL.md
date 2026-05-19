@@ -525,7 +525,7 @@ class FeatureViewModel: FeatureViewModelProtocol {
     }
 
     func viewDidLoad() {
-        loadData()
+        startLoading()
     }
 
     func didSelectItem(at index: Int) {
@@ -534,23 +534,32 @@ class FeatureViewModel: FeatureViewModelProtocol {
     }
 
     func didTapRetry() {
-        loadData()
+        startLoading()
     }
 
-    private func loadData() {
+    private func startLoading() {
         loadTask?.cancel()
-        loadTask = Task {
-            isLoading = true
-            do {
-                let fetched = try await service.fetchItems()
-                rawItems = fetched
-                items = fetched.map(ItemCellModel.init)
-            } catch {
-                onError?(error.localizedDescription)
-            }
-            isLoading = false
+        loadTask = Task { [weak self] in
+            await self?.loadData()
         }
     }
+
+    // Internal so unit tests can await deterministic work without reaching into private Task handles.
+    func loadData() async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let fetched = try await service.fetchItems()
+            rawItems = fetched
+            items = fetched.map(ItemCellModel.init)
+        } catch is CancellationError {
+            // Screen went away or a newer request replaced this one.
+        } catch {
+            onError?(error.localizedDescription)
+        }
+    }
+
+    deinit { loadTask?.cancel() }
 }
 ```
 
@@ -605,38 +614,36 @@ class FeatureViewModelTests: XCTestCase {
     }
 
     @MainActor
-    func testViewDidLoad_fetchesItems() async {
+    func testLoadData_fetchesItems() async {
         mockService.stubbedItems = [Item(id: "1")]
         let sut = FeatureViewModel(service: mockService)
 
-        sut.viewDidLoad()
-        await sut.loadTask?.value // wait for Task to complete
+        await sut.loadData()
 
         XCTAssertEqual(sut.items.count, 1)
     }
 
     @MainActor
-    func testViewDidLoad_showsAndHidesLoading() async {
+    func testLoadData_showsAndHidesLoading() async {
         mockService.stubbedItems = []
         let sut = FeatureViewModel(service: mockService)
+        var states: [Bool] = []
+        sut.onStateChanged = { states.append(sut.isLoading) }
 
-        sut.viewDidLoad()
-        // isLoading is true immediately after viewDidLoad
-        XCTAssertTrue(sut.isLoading)
+        await sut.loadData()
 
-        await sut.loadTask?.value
-        XCTAssertFalse(sut.isLoading)
+        XCTAssertEqual(states.first, true)
+        XCTAssertEqual(states.last, false)
     }
 
     @MainActor
-    func testViewDidLoad_setsErrorOnFailure() async {
+    func testLoadData_setsErrorOnFailure() async {
         mockService.shouldFail = true
         let sut = FeatureViewModel(service: mockService)
         var receivedError: String?
         sut.onError = { receivedError = $0 }
 
-        sut.viewDidLoad()
-        await sut.loadTask?.value
+        await sut.loadData()
 
         XCTAssertNotNil(receivedError)
     }
@@ -648,8 +655,7 @@ class FeatureViewModelTests: XCTestCase {
         var selectedItem: Item?
         sut.onItemSelected = { selectedItem = $0 }
 
-        sut.viewDidLoad()
-        await sut.loadTask?.value
+        await sut.loadData()
 
         sut.didSelectItem(at: 0)
         XCTAssertEqual(selectedItem?.id, "42")
