@@ -370,7 +370,8 @@ Use this when state is genuinely local to one flow. Beyond ~5 actions, switch to
 
 ## Deep Links
 
-URL → Route enum → mutate `NavigationPath`. The Router (or App) owns the parsing.
+Parsed `Route` enum → mutate `NavigationPath`. URL parsing and OS entry points
+belong to `nav-deeplinks`; this Router applies an already validated route.
 
 > The `DeepLinkParser`, Universal Links / AASA setup, every OS entry point,
 > cold-start buffering, and the auth/onboarding gate are owned by the
@@ -379,8 +380,7 @@ URL → Route enum → mutate `NavigationPath`. The Router (or App) owns the par
 
 ```swift
 extension AppRouter {
-    func handle(_ url: URL) {
-        guard let route = DeepLinkParser.parse(url) else { return }
+    func apply(_ route: Route) {
         path.removeLast(path.count)  // reset
         switch route {
         case .item(let id):
@@ -392,12 +392,9 @@ extension AppRouter {
         }
     }
 }
-
-// Wire to scene
-.onOpenURL { url in router.handle(url) }
 ```
 
-For cross-tab deep links (`myapp://profile` should switch to Profile tab + push), the Router holds tab selection too:
+For cross-tab deep links (`Route.profile` should switch to Profile tab + push), the Router holds tab selection too:
 
 ```swift
 @MainActor
@@ -407,8 +404,8 @@ final class AppRouter {
     var homePath = NavigationPath()
     var profilePath = NavigationPath()
 
-    func handle(_ url: URL) {
-        switch DeepLinkParser.parse(url) {
+    func apply(_ route: Route) {
+        switch route {
         case .profile(let id):
             selectedTab = .profile
             profilePath.append(Profile(id: id))
