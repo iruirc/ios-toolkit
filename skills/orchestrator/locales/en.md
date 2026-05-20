@@ -7,7 +7,7 @@ Specify task number, e.g. `запусти 026` / `/task-run 026`.
 Task `{task_id}` not found in `Tasks/`.
 
 ## fallback_profile_question
-Which profile? (1) FEATURE (2) BUG (3) REFACTOR (4) TEST (5) REVIEW (6) EPIC
+Which profile? (1) FEATURE (2) BUG (3) REFACTOR (4) TEST (5) REVIEW (6) EPIC (7) RESEARCH
 
 ## confirm_dispatch
 Profile: `{profile}`, mode: `{mode}`, stack: `{stack}`, start: `{start_stage}`. Correct?
@@ -59,3 +59,21 @@ Which target platform does this task use?
 
 ## auq_axis_tests_question
 Which test framework does this task use?
+
+## auq_research_agent_question
+Which agent should run the Research stage?
+
+## auq_research_agent_architect
+Architect — feasibility, comparative analysis, domain investigation
+
+## auq_research_agent_diagnostics
+Diagnostics — audit, inventory, pattern hunt
+
+## auq_research_agent_security
+Security — OWASP, vulnerability, pinning audit
+
+## research_agent_diagnostics_keywords
+audit; inventory; grep all
+
+## research_agent_security_keywords
+security; OWASP; vulnerability; pinning

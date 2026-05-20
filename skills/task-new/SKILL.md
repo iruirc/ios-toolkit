@@ -56,7 +56,7 @@ For reference, the templates contain these placeholders:
 |---|---|
 | `{{DATE}}` | Today's ISO date (`YYYY-MM-DD`). |
 | `{{NNN_SLUG}}` | The folder name, e.g. `001-profile-screen`. |
-| `{{TASK_TYPE}}` | `FEATURE` \| `BUG` \| `REFACTOR` \| `REVIEW` \| `TEST` \| `EPIC` (decided in step 6 below). |
+| `{{TASK_TYPE}}` | `FEATURE` \| `BUG` \| `REFACTOR` \| `REVIEW` \| `TEST` \| `EPIC` \| `RESEARCH` (decided in step 4 below). |
 | `{{NEED_TEST}}` | `true` \| `false` (decided in step 7 below). |
 | `{{NEED_REVIEW}}` | `true` \| `false` (decided in step 7 below). |
 | `{{STATUS}}` | (`task-step.md` only) `PENDING` \| `IN_PROGRESS` \| `DONE` \| `DEFERRED` \| `BLOCKED` \| `SKIPPED`. |
@@ -78,10 +78,12 @@ For reference, the templates contain these placeholders:
    - "refactor" / "extract" / "split into modules" → `REFACTOR`
    - "review" / "look at the diff" → `REVIEW`
    - "write tests" / "cover with tests" / "unit tests" → `TEST`
+   - Research-only intent keywords from locale key `task_type_research_keywords` (audit, investigate without changes, inventory, feasibility, spike, comparative analysis, research without "epic", plus localized equivalents) → `RESEARCH`
    - Default → `FEATURE`
 5. **Decide `{{NEED_TEST}}` / `{{NEED_REVIEW}}`** — default `true` / `true`. Flip to `false` when:
    - Visual/cosmetic ("change color", "move button", "update icon", "update localization string") → `NEED_TEST = false`.
    - `TASK_TYPE` is `REVIEW`, `TEST`, or `EPIC` → both flags become `false` (not applicable).
+   - `TASK_TYPE` is `RESEARCH` → `NEED_TEST = false` (no code → no tests); `NEED_REVIEW = true` by default (research output benefits from review).
    - The user explicitly asked for the work without tests or without review.
 6. **Locate the template** (read the first existing path):
    a. `<toolkit-root>/templates/task-md/task-root.md`

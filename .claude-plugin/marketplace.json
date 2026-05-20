@@ -1,19 +1,19 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "swift-toolkit",
-  "version": "3.2.0",
+  "version": "3.6.0",
   "description": "Swift/Apple development toolkit with specialized agents for architecture, development, code review, refactoring, testing, diagnostics, security, and project initialization, plus orchestrator skill, workflow-* profile skills, task management skills, workspace-* skills for multi-package SPM workspaces, project-repo generation, and slash commands",
   "owner": {
     "name": "Dmitry Nuzhin"
   },
   "metadata": {
-    "description": "Swift/Apple development toolkit covering iOS, macOS, SPM packages. Includes architect, developer, reviewer, refactorer, tester, diagnostics, security, init agents, orchestrator skill for task workflow automation, workflow-* profile skills (FEATURE/BUG/REFACTOR/TEST/REVIEW/EPIC), task management skills (task-new, task-move, task-status), workspace-* skills for multi-package SPM workspaces (workspace-init, workspace-add, workspace-docs-regen), project-repo generation, and slash commands (/task-new, /task-run, /task-continue, /task-redo, /task-restart, /task-move, /task-status, /workspace-init, /workspace-add, /workspace-docs-regen). Covers UIKit, SwiftUI, Swift Concurrency (async/await), Combine, RxSwift, Swinject DI, and patterns (MVVM, VIPER, Clean Architecture, Coordinator)."
+    "description": "Swift/Apple development toolkit covering iOS, macOS, SPM packages. Includes architect, developer, reviewer, refactorer, tester, diagnostics, security, init agents, orchestrator skill for task workflow automation, workflow-* profile skills (FEATURE/BUG/REFACTOR/TEST/REVIEW/EPIC/RESEARCH), task management skills (task-new, task-move, task-status), workspace-* skills for multi-package SPM workspaces (workspace-init, workspace-add, workspace-docs-regen), project-repo generation, and slash commands (/task-new, /task-run, /task-continue, /task-redo, /task-restart, /task-move, /task-status, /workspace-init, /workspace-add, /workspace-docs-regen). Covers UIKit, SwiftUI, Swift Concurrency (async/await), Combine, RxSwift, Swinject DI, and patterns (MVVM, VIPER, Clean Architecture, Coordinator)."
   },
   "plugins": [
     {
       "name": "swift-toolkit",
-      "description": "Swift/Apple development toolkit: agents (architect, developer, reviewer, refactorer, tester, diagnostics, security, init) + orchestrator skill + workflow-* profile skills + task management skills (task-new, task-move, task-status) + workspace-* skills for multi-package SPM workspaces (workspace-init, workspace-add, workspace-docs-regen) + project-repo generation + slash commands (task-new/run/continue/redo/restart/move/status, workspace-init/add/docs-regen)",
-      "version": "3.2.0",
+      "description": "Swift/Apple development toolkit: agents (architect, developer, reviewer, refactorer, tester, diagnostics, security, init) + orchestrator skill + workflow-* profile skills (FEATURE/BUG/REFACTOR/TEST/REVIEW/EPIC/RESEARCH) + task management skills (task-new, task-move, task-status) + workspace-* skills for multi-package SPM workspaces (workspace-init, workspace-add, workspace-docs-regen) + project-repo generation + slash commands (task-new/run/continue/redo/restart/move/status, workspace-init/add/docs-regen)",
+      "version": "3.6.0",
       "author": {
         "name": "Dmitry Nuzhin"
       },

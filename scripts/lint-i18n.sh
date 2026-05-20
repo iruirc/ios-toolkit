@@ -4,7 +4,8 @@ set -euo pipefail
 # Allowed cyrillic locations:
 #   docs/**                          (free-form reference)
 #   skills/*/locales/ru.md           (Russian locale strings)
-#   templates/claude-md/ru.md        (Russian template)
+#   templates/claude-md-stub/ru.md   (Russian template)
+#   conventions/i18n.md              (canonical multilingual examples)
 #   any *.ru.md anywhere             (Russian-only mirrors)
 #   skills/<name>/SKILL.md           (only inside frontmatter description: bilingual triggers)
 #   agents/<name>.md                 (only inside frontmatter description: bilingual triggers)
@@ -18,7 +19,8 @@ while IFS= read -r -d '' f; do
     ./docs/*) continue ;;
     *.ru.md) continue ;;
     ./skills/*/locales/*.md) continue ;;
-    ./templates/claude-md/ru.md) continue ;;
+    ./templates/claude-md-stub/ru.md) continue ;;
+    ./conventions/i18n.md) continue ;;
     ./.git/*) continue ;;
   esac
 

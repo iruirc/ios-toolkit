@@ -1,0 +1,4 @@
+interface:
+  display_name: "Research Workflow"
+  short_description: "Help with Research Workflow tasks"
+  default_prompt: "Use $workflow-research to handle Research Workflow work."

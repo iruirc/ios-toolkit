@@ -7,7 +7,7 @@
 Задача `{task_id}` не найдена в `Tasks/`.
 
 ## fallback_profile_question
-Какой профиль? (1) FEATURE (2) BUG (3) REFACTOR (4) TEST (5) REVIEW (6) EPIC
+Какой профиль? (1) FEATURE (2) BUG (3) REFACTOR (4) TEST (5) REVIEW (6) EPIC (7) RESEARCH
 
 ## confirm_dispatch
 Профиль: `{profile}`, режим: `{mode}`, стек: `{stack}`, старт: `{start_stage}`. Верно?
@@ -59,3 +59,21 @@
 
 ## auq_axis_tests_question
 Какой тестовый фреймворк использует эта задача?
+
+## auq_research_agent_question
+Какой агент должен выполнить стадию Research?
+
+## auq_research_agent_architect
+Architect — feasibility, сравнительный анализ, исследование домена
+
+## auq_research_agent_diagnostics
+Diagnostics — аудит, инвентарь, поиск паттерна
+
+## auq_research_agent_security
+Security — OWASP, уязвимость, аудит pinning
+
+## research_agent_diagnostics_keywords
+audit; inventory; grep all; аудит; найди все
+
+## research_agent_security_keywords
+security; OWASP; vulnerability; pinning; безопасность
