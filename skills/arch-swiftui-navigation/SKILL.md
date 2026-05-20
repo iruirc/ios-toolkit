@@ -474,10 +474,10 @@ final class AppRouterTests: XCTestCase {
         XCTAssertEqual(router.path.count, 1)
     }
 
-    func test_handleDeepLink_resetsPathAndAppendsTarget() {
+    func test_applyRoute_resetsPathAndAppendsTarget() {
         let router = AppRouter()
         router.path.append(Item(id: "old"))
-        router.handle(URL(string: "myapp://item/42")!)
+        router.apply(.item(id: "42"))
         XCTAssertEqual(router.path.count, 1)
     }
 
