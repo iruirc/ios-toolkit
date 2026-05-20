@@ -9,6 +9,9 @@ swift-toolkit CLAUDE-swift-toolkit.md template not found. Check `<toolkit-root>/
 ## auq_create_tasks_structure
 Create `Tasks/` structure for managing tasks? [Yes / No]
 
+## auq_create_docs_structure
+Create `Docs/` structure for project documentation? [Yes / No]
+
 ## auq_q1_ui_label
 UI framework
 
@@ -44,6 +47,7 @@ CLAUDE-swift-toolkit.md created with stack:
   - Language: {lang}
 
 Tasks/ structure: {tasks_status}
+Docs/ structure: {docs_status}
 
 Next steps:
   - create your first task: /task-new <description>
@@ -57,6 +61,15 @@ created
 already existed
 
 ## tasks_status_skipped
+skipped
+
+## docs_status_created
+created
+
+## docs_status_already_existed
+already existed
+
+## docs_status_skipped
 skipped
 
 ## auq_lang_label

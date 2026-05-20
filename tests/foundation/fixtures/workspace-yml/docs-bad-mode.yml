@@ -1,0 +1,8 @@
+workspace:
+  name: bad-docs-mode
+  docs:
+    enabled: true
+    mode: not-a-mode
+remotes: [origin]
+packages:
+  - { name: A, archetype: api-contract, git: {origin: x}, version: 0.1.0 }

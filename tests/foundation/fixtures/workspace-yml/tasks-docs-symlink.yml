@@ -1,0 +1,13 @@
+workspace:
+  name: tasks-docs-symlink
+  tasks:
+    enabled: true
+    mode: symlink
+    symlink_target: ../../Tasks
+  docs:
+    enabled: true
+    mode: symlink
+    symlink_target: ../../Docs
+remotes: [origin]
+packages:
+  - { name: A, archetype: api-contract, git: {origin: x}, version: 0.1.0 }

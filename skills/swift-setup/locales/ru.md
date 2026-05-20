@@ -9,6 +9,9 @@
 ## auq_create_tasks_structure
 Создать `Tasks/` структуру для управления задачами? [Yes / No]
 
+## auq_create_docs_structure
+Создать `Docs/` структуру для документации проекта? [Yes / No]
+
 ## auq_q1_ui_label
 UI-фреймворк
 
@@ -44,6 +47,7 @@ CLAUDE-swift-toolkit.md создан со стеком:
   - Язык: {lang}
 
 Tasks/ структура: {tasks_status}
+Docs/ структура: {docs_status}
 
 Следующие шаги:
   - создать первую задачу: /task-new <описание>
@@ -57,6 +61,15 @@ Tasks/ структура: {tasks_status}
 уже существовала
 
 ## tasks_status_skipped
+пропущена
+
+## docs_status_created
+создана
+
+## docs_status_already_existed
+уже существовала
+
+## docs_status_skipped
 пропущена
 
 ## auq_lang_label

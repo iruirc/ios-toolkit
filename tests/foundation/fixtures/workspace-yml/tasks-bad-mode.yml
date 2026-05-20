@@ -1,0 +1,9 @@
+workspace:
+  name: bad-tasks-mode
+  tasks:
+    enabled: true
+    mode: weirdmode
+    path: ./Tasks
+remotes: [origin]
+packages:
+  - { name: A, archetype: api-contract, git: {origin: x}, version: 0.1.0 }

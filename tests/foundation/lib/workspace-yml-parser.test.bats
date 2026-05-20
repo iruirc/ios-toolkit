@@ -130,6 +130,46 @@ teardown() {
   [ "$status" -eq 0 ]
 }
 
+@test "validate rejects tasks.mode that is not sibling|path|symlink" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/tasks-bad-mode.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"tasks.mode must be one of sibling|path|symlink"* ]]
+}
+
+@test "validate rejects tasks.mode=symlink without symlink_target" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/tasks-symlink-no-target.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"tasks.mode=symlink requires non-empty tasks.symlink_target"* ]]
+}
+
+@test "validate rejects docs.path that is absolute" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/docs-absolute-path.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"docs.path must be relative"* ]]
+}
+
+@test "validate rejects docs.mode that is not sibling|path|symlink" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/docs-bad-mode.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"docs.mode must be one of sibling|path|symlink"* ]]
+}
+
+@test "validate rejects docs.mode=symlink without symlink_target" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/docs-symlink-no-target.yml)' && wsyml::validate"
+  [ "$status" -eq 2 ]
+  [[ "$output" == *"docs.mode=symlink requires non-empty docs.symlink_target"* ]]
+}
+
+@test "validate accepts docs.enabled: false" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/docs-disabled.yml)' && wsyml::validate"
+  [ "$status" -eq 0 ]
+}
+
+@test "validate accepts tasks + docs in symlink mode with targets" {
+  run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/tasks-docs-symlink.yml)' && wsyml::validate"
+  [ "$status" -eq 0 ]
+}
+
 @test "validate rejects example_app without example_platform" {
   run zsh -c "source '$(ws_lib_path workspace-yml-parser.zsh)'; wsyml::load '$(ws_fixture_path workspace-yml/example-app-no-platform.yml)' && wsyml::validate"
   [ "$status" -eq 2 ]

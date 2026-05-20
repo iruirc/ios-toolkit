@@ -1,0 +1,9 @@
+workspace:
+  name: docs-abs
+  docs:
+    enabled: true
+    mode: path
+    path: /Users/foo/work/docs
+remotes: [origin]
+packages:
+  - { name: A, archetype: api-contract, git: {origin: x}, version: 0.1.0 }

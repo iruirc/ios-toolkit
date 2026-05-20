@@ -7,7 +7,14 @@ workspace:
   code_workspace: true
   tasks:
     enabled: true
-    path: ./Tasks
+    mode: sibling          # sibling | path | symlink
+    path: ./Tasks          # used by sibling / path modes
+    symlink_target: null   # required by symlink mode (e.g. ../../Tasks)
+  docs:
+    enabled: true
+    mode: sibling          # sibling | path | symlink
+    path: ./Docs           # used by sibling / path modes
+    symlink_target: null   # required by symlink mode (e.g. ../../Docs)
 
 remotes:
   - origin

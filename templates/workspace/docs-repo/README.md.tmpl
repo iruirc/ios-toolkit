@@ -1,0 +1,32 @@
+# {{WORKSPACE_NAME}} — Docs
+
+Shared documentation tracker for the **{{WORKSPACE_NAME}}** workspace.
+
+When provisioned in `sibling` or `path` mode, this repository sits at the
+workspace-parent level, alongside the meta-repo, package repos, and project
+repos. It is its own git repository so documentation history can be versioned
+and synced independently of the source code.
+
+When provisioned in `symlink` mode, this folder is a symbolic link to an
+external directory shared across multiple checkouts (e.g. across worktrees or
+branch-specific clones).
+
+## Layout
+
+```
+Docs/
+├── architecture/   # high-level architecture, component diagrams, ADRs
+├── api/            # API contracts, OpenAPI specs, integration notes
+├── guides/         # how-to guides, onboarding, runbooks
+└── notes/          # working notes, research, drafts
+```
+
+Subfolders are conventional, not enforced — adapt to the workspace's needs.
+
+## Conventions
+
+- Markdown only. One topic per file. Short, descriptive filenames.
+- Cross-link related code in the corresponding package or project repo using
+  relative paths from this repo's root (`../packages/<name>/...` or
+  `../<project-repo>/...`).
+- Architecture decision records: `architecture/adr-NNN-<slug>.md`.

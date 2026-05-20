@@ -37,21 +37,62 @@ done < <(find "$templates_root/meta-repo" -type f -name '*.tmpl')
 cp "$ws_yml" "$meta_dir/workspace.yml"
 ( cd "$meta_dir" && git init -q -b main && touch .gitkeep )
 
-# s09_tasks: shared Tasks repo at workspace-parent (sibling to meta-repo / packages / project repos)
-tasks_enabled="$(wsyml::get '.workspace.tasks.enabled' 2>/dev/null || echo 'true')"
-tasks_path="$(wsyml::get '.workspace.tasks.path' 2>/dev/null || echo './Tasks')"
-if [[ "$tasks_enabled" == "true" ]]; then
-  tasks_dir="$ws_parent/${tasks_path#./}"
-  mkdir -p "$tasks_dir/TODO" "$tasks_dir/ACTIVE" "$tasks_dir/DONE"
+# Shared helper: provision Tasks/ or Docs/ block per mode.
+# Args: <block-name (tasks|docs)> <default-link-name (Tasks|Docs)> <template-subdir (tasks-repo|docs-repo)>
+ws_provision_block() {
+  local block="$1" default_name="$2" tmpl_subdir="$3"
+  local enabled mode bpath target target_dir link_name
+  enabled="$(wsyml::get ".workspace.${block}.enabled" 2>/dev/null || echo 'true')"
+  mode="$(wsyml::get ".workspace.${block}.mode" 2>/dev/null || echo 'sibling')"
+  bpath="$(wsyml::get ".workspace.${block}.path" 2>/dev/null || echo "./${default_name}")"
+  target="$(wsyml::get ".workspace.${block}.symlink_target" 2>/dev/null || echo '')"
+
+  [[ "$enabled" == "true" ]] || return 0
+
+  case "$mode" in
+    sibling)
+      link_name="$default_name"
+      target_dir="$ws_parent/$link_name"
+      ;;
+    path)
+      target_dir="$ws_parent/${bpath#./}"
+      ;;
+    symlink)
+      link_name="$default_name"
+      target_dir="$ws_parent/$link_name"
+      ;;
+  esac
+
+  # Idempotency / preservation: skip if anything already exists at the target location.
+  if [[ -e "$target_dir" || -L "$target_dir" ]]; then
+    return 0
+  fi
+
+  if [[ "$mode" == "symlink" ]]; then
+    mkdir -p "${target_dir:h}"
+    ln -s "$target" "$target_dir"
+    return 0
+  fi
+
+  mkdir -p "$target_dir"
   while IFS= read -r src; do
-    rel="${src#$templates_root/tasks-repo/}"
+    local rel dst
+    rel="${src#$templates_root/${tmpl_subdir}/}"
     rel="${rel%.tmpl}"
-    dst="$tasks_dir/$rel"
+    dst="$target_dir/$rel"
     mkdir -p "${dst:h}"
     sed "s|{{WORKSPACE_NAME}}|$ws_name|g" "$src" > "$dst"
-  done < <(find "$templates_root/tasks-repo" -type f \( -name '*.tmpl' -o -name '.gitkeep' \))
-  ( cd "$tasks_dir" && git init -q -b main )
-fi
+  done < <(find "$templates_root/${tmpl_subdir}" -type f \( -name '*.tmpl' -o -name '.gitkeep' \))
+
+  if [[ "$block" == "tasks" ]]; then
+    mkdir -p "$target_dir/TODO" "$target_dir/ACTIVE" "$target_dir/DONE"
+  fi
+  ( cd "$target_dir" && git init -q -b main )
+}
+
+# s09_tasks + s09b_docs
+ws_provision_block tasks Tasks tasks-repo
+ws_provision_block docs  Docs  docs-repo
 
 # Per package
 for p in $(wsyml::packages); do

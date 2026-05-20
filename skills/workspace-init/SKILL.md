@@ -50,9 +50,19 @@ Always print the pre-flight summary first (using `preflight_*` locale keys):
 
    **Anti-pattern to avoid:** presenting "How many packages?" or "Add 1 / 2 / 3 packages?" as a single multi-choice question and then collecting that many in a fixed batch. Always loop with re-prompts.
 6. Ask defaults overrides (Y/N) for `default_branch`, `push_remotes`, `release_strategy`.
-7. Ask `qa_tasks_enabled` (Y/N, default Y). If Y, ask `qa_tasks_path` (text, default `./Tasks`). Validate path: must NOT be absolute (no leading `/`), must NOT contain `..` segments (avoid escaping workspace-parent). Reprompt on validation failure. Record into `workspace.tasks.enabled` / `workspace.tasks.path`. If N, set `tasks.enabled: false` and skip the path prompt (s09 will skip at execution).
+7. Ask the Tasks/ block (Y/N, default Y) using `qa_tasks_enabled`. If Y, ask `qa_tasks_mode` (multi-choice: `sibling` / `path` / `symlink`, default `sibling`).
+   - `sibling` → record `workspace.tasks.mode = sibling`, `workspace.tasks.path = ./Tasks`. No further prompt.
+   - `path` → ask `qa_tasks_path` (text, default `./Tasks`). Validate path: must NOT be absolute (no leading `/`), must NOT contain `..` segments. Reprompt on validation failure. Record `workspace.tasks.mode = path`, `workspace.tasks.path = <answer>`.
+   - `symlink` → ask `qa_tasks_symlink_target` (text, required, non-empty). The value may be relative (allowed to contain `..` segments) or absolute. Record `workspace.tasks.mode = symlink`, `workspace.tasks.symlink_target = <answer>`, `workspace.tasks.path = ./Tasks` (used as the link name in workspace-parent).
+   - If the top-level answer was N, set `tasks.enabled: false` and skip the mode prompt (s09 will skip at execution).
+
+7b. Ask the Docs/ block (Y/N, default Y) using `qa_docs_enabled`. If Y, ask `qa_docs_mode` (multi-choice: `sibling` / `path` / `symlink`, default `sibling`).
+   - `sibling` → record `workspace.docs.mode = sibling`, `workspace.docs.path = ./Docs`. No further prompt.
+   - `path` → ask `qa_docs_path` (text, default `./Docs`). Validate path: must NOT be absolute (no leading `/`), must NOT contain `..` segments. Reprompt on validation failure. Record `workspace.docs.mode = path`, `workspace.docs.path = <answer>`.
+   - `symlink` → ask `qa_docs_symlink_target` (text, required, non-empty). The value may be relative (allowed to contain `..` segments) or absolute. Record `workspace.docs.mode = symlink`, `workspace.docs.symlink_target = <answer>`, `workspace.docs.path = ./Docs` (used as the link name in workspace-parent).
+   - If the top-level answer was N, set `docs.enabled: false` and skip the mode prompt (s09b will skip at execution).
 8. Ask bootstrap (`qa_bootstrap_use_gh`, `qa_bootstrap_push_after_init`, `qa_bootstrap_commit_after_init`). Optional: `initial_commit_message` (default "Initial commit"), `git_author` (text, optional).
-9. Render `workspace.yml` to chat (use yq from collected values). Print `confirm_summary_header` + summary table (meta-repo dir, package count, remote count, tasks-repo path or `disabled`, will-commit Y/N, will-push Y/N).
+9. Render `workspace.yml` to chat (use yq from collected values). Print `confirm_summary_header` + summary table (meta-repo dir, package count, remote count, tasks-repo path-and-mode or `disabled`, docs-repo path-and-mode or `disabled`, will-commit Y/N, will-push Y/N). For `mode: symlink` show the target value next to the path, e.g. `Tasks (symlink → ../../Tasks)`.
 
    When `project:` block is present, the summary additionally shows:
    - `{N} project repos: {ios=<repo>, macos=<repo>}`
@@ -81,19 +91,60 @@ Maintain `<workspace-parent>/.workspace-init.state` (newline-delimited list of c
 | s06d_project_workspace_meta_<app> | Run `wsproj::append_workspace_meta <repo>` to add `## Workspace meta` section to `<repo>/CLAUDE-swift-toolkit.md`. | `grep -q '^## Workspace meta' <repo>/CLAUDE-swift-toolkit.md` |
 | s06e_project_git_<app> | `git init -b <default-branch>` in `<repo>`. | `[[ -d <repo>/.git ]]` |
 | s07_xcworkspace | copy `templates/workspace/meta-repo/xcworkspace-contents.xml.tmpl` to `<workspace-name>.xcworkspace/contents.xcworkspacedata`, then fill **both** markers: (1) `WORKSPACE_PROJECT_REFS` — when `project:` block is present, write one `<FileRef location="group:../<app-repo>/<app-repo>.xcodeproj"></FileRef>` per `project.apps.<key>.repo`. The `.xcodeproj` filename equals the repo name because s06b invoked `swift-init` with `--main-target-name=<repo>`, which makes both the main target and the `.xcodeproj` follow the repo name — keeping each platform's `.xcodeproj` distinct in the xcworkspace tree. Leave the marker empty when `project:` is absent. (2) `WORKSPACE_PKG_REFS` — one `<FileRef location="group:../<group_dir_or_packages>/<name>"></FileRef>` per package | always overwrite (derived) |
-| s08_codeworkspace | copy `templates/workspace/meta-repo/code-workspace.json.tmpl` to `<workspace-name>.code-workspace`, then append to `folders[]`: (1) when `project:` is present, one `{ "name": "<app-repo>", "path": "../<app-repo>" }` per `project.apps.<key>.repo`; (2) one `{ "name": "<name>", "path": "../<group_dir_or_packages>/<name>" }` per package; (3) when `workspace.tasks.enabled` is true, one `{ "name": "Tasks", "path": "../<tasks-path-without-leading-./>" }` | always overwrite |
-| s09_tasks | iff `workspace.tasks.enabled` (default `true`): mkdir `<workspace-parent>/<workspace.tasks.path>` (default `Tasks`) with subfolders `TODO/`, `ACTIVE/`, `DONE/`, render `templates/workspace/tasks-repo/` files (substitutes `{{WORKSPACE_NAME}}`), and `git init -b <default-branch>` inside it. Tasks/ is a **separate git repo** at workspace-parent level, sibling to packages and project repos — NOT inside the meta-repo. | `[[ -d <workspace-parent>/<tasks-path>/.git ]]` |
+| s08_codeworkspace | copy `templates/workspace/meta-repo/code-workspace.json.tmpl` to `<workspace-name>.code-workspace`, then append to `folders[]`: (1) when `project:` is present, one `{ "name": "<app-repo>", "path": "../<app-repo>" }` per `project.apps.<key>.repo`; (2) one `{ "name": "<name>", "path": "../<group_dir_or_packages>/<name>" }` per package; (3) when `workspace.tasks.enabled` is true, one `{ "name": "Tasks", "path": "../<tasks-link-name>" }` (see "Tasks/Docs path resolution" below for `<tasks-link-name>`); (4) when `workspace.docs.enabled` is true, one `{ "name": "Docs", "path": "../<docs-link-name>" }` | always overwrite |
+| s09_tasks | iff `workspace.tasks.enabled` (default `true`): provision Tasks/ per `workspace.tasks.mode`. See "Tasks/Docs provisioning" below for the per-mode behavior. | per-mode (see "Tasks/Docs idempotency") |
+| s09b_docs | iff `workspace.docs.enabled` (default `true`): provision Docs/ per `workspace.docs.mode`. See "Tasks/Docs provisioning" below for the per-mode behavior. Skip (mark complete) if the target path at `<workspace-parent>/<docs-link-name>` already exists as a folder, symlink, or file — preserves manually placed `Docs` symlinks already on disk. | per-mode (see "Tasks/Docs idempotency") |
 | s10_meta_initial_commit | iff `bootstrap.commit_after_init`: `git -c user.name=... -c user.email=... commit` | `git rev-list HEAD` non-empty |
-| s10b_tasks_initial_commit | iff `workspace.tasks.enabled` AND `bootstrap.commit_after_init`: `git -C <workspace-parent>/<tasks-path> add -A && git -C <workspace-parent>/<tasks-path> commit -m <msg>` | `git -C <workspace-parent>/<tasks-path> rev-list HEAD` non-empty |
+| s10b_tasks_initial_commit | iff `workspace.tasks.enabled` AND `workspace.tasks.mode != symlink` AND `bootstrap.commit_after_init`: `git -C <workspace-parent>/<tasks-path> add -A && git -C <workspace-parent>/<tasks-path> commit -m <msg>` | `git -C <workspace-parent>/<tasks-path> rev-list HEAD` non-empty |
+| s10c_docs_initial_commit | iff `workspace.docs.enabled` AND `workspace.docs.mode != symlink` AND `bootstrap.commit_after_init`: `git -C <workspace-parent>/<docs-path> add -A && git -C <workspace-parent>/<docs-path> commit -m <msg>` | `git -C <workspace-parent>/<docs-path> rev-list HEAD` non-empty |
 | s11_pkg_initial_commit_<name> | same per package | as above |
 | s11b_project_initial_commit_<app> | Iff `bootstrap.commit_after_init`: `git -C <repo> add -A && git -C <repo> commit -m <msg>`. | `git -C <repo> rev-list HEAD` non-empty |
-| s12_gh_repos | iff `use_gh`: `gh repo create` for meta + each package + tasks-repo (when `tasks.enabled`), register `remotes[0]` URL | `git remote get-url <remotes[0]>` succeeds |
+| s12_gh_repos | iff `use_gh`: `gh repo create` for meta + each package + tasks-repo (when `tasks.enabled` AND `tasks.mode != symlink`) + docs-repo (when `docs.enabled` AND `docs.mode != symlink`), register `remotes[0]` URL. Symlink-mode tasks/docs are NEVER registered with `gh repo create` — they point to an external folder whose repo lifecycle is out of scope for workspace-init. | `git remote get-url <remotes[0]>` succeeds |
 | s12b_gh_project_<app> | Iff `bootstrap.use_gh`: `gh repo create` for `<repo>`, register `remotes[0]` URL. | `git -C <repo> remote get-url <remotes[0]>` succeeds |
-| s13_push | iff `push_after_init`: `git push -u remotes[0] <branch>` per repo (meta + packages + tasks-repo) | always idempotent |
+| s13_push | iff `push_after_init`: `git push -u remotes[0] <branch>` per repo (meta + packages + tasks-repo when `tasks.mode != symlink` + docs-repo when `docs.mode != symlink`) | always idempotent |
 | s13b_push_project_<app> | Iff `bootstrap.push_after_init`: `git -C <repo> push -u remotes[0] <branch>`. | always idempotent |
 | s14_local_skills | iff `generate_local_skills`: render `.claude/skills/v-*/SKILL.md` shims | per-file `[[ -f ]]` |
 
 After s14, delete `.workspace-init.state`. Emit `report_success`.
+
+### Tasks/Docs path resolution
+
+For both `tasks` and `docs` blocks, two derived values are used elsewhere in the skill:
+
+- `<tasks-path>` / `<docs-path>` — the location on disk:
+  - mode `sibling` → `<workspace-parent>/Tasks` or `<workspace-parent>/Docs` (fixed link name).
+  - mode `path` → `<workspace-parent>/<path-without-leading-./>`.
+  - mode `symlink` → `<workspace-parent>/Tasks` or `<workspace-parent>/Docs` (the symlink itself; its target is `symlink_target`).
+- `<tasks-link-name>` / `<docs-link-name>` — the name used when registering the folder in the xcworkspace/code-workspace tree:
+  - mode `sibling` / `symlink` → `Tasks` or `Docs`.
+  - mode `path` → `basename(path)`.
+
+### Tasks/Docs provisioning
+
+s09_tasks and s09b_docs share the same per-mode algorithm. Apply with `<block>` ∈ {`tasks`, `docs`}, `<name>` ∈ {`Tasks`, `Docs`}, and `<repo-template>` ∈ {`templates/workspace/tasks-repo/`, `templates/workspace/docs-repo/`}:
+
+- mode `sibling`:
+  1. `mkdir -p <workspace-parent>/<name>` (plus the conventional subfolders defined by `<repo-template>` — `TODO/ ACTIVE/ DONE/` for tasks, `architecture/ api/ guides/ notes/` for docs).
+  2. Render `<repo-template>` files (substitutes `{{WORKSPACE_NAME}}`).
+  3. `git init -b <default-branch>` inside `<workspace-parent>/<name>`.
+- mode `path`:
+  1. `mkdir -p <workspace-parent>/<path-without-leading-./>` (plus the conventional subfolders from `<repo-template>`).
+  2. Render `<repo-template>` files into that directory (substitutes `{{WORKSPACE_NAME}}`).
+  3. `git init -b <default-branch>` inside that directory.
+- mode `symlink`:
+  1. `ln -s <symlink_target> <workspace-parent>/<name>`. The target is NOT created, validated, or modified by workspace-init — it is the user's responsibility. The symlink may dangle at creation time; it will resolve when the target appears.
+  2. NO `mkdir`, NO template render, NO `git init`. The target's content lifecycle is out of scope.
+
+The default mode is `sibling`. Tasks and Docs default to `enabled: true` so old `workspace.yml` files (with no `tasks:` or `docs:` block, or with only `enabled`/`path`) keep working — missing fields are filled with `mode: sibling` + `path: ./Tasks` / `./Docs`.
+
+### Tasks/Docs idempotency
+
+For s09_tasks and s09b_docs the idempotency check depends on mode:
+
+- mode `sibling` / `path` → `[[ -d <workspace-parent>/<tasks|docs-path>/.git ]]`.
+- mode `symlink` → `[[ -L <workspace-parent>/<tasks|docs-link-name> ]]` (regular `-L` test; check that it is a symlink, not whether the target exists).
+
+In addition, both s09_tasks and s09b_docs MUST skip (mark complete in state file) if `<workspace-parent>/<tasks|docs-link-name>` already exists as ANY of: folder, symlink, or file. This protects existing manual layouts (e.g. a hand-placed `Docs -> ../../Docs` symlink before workspace-init was rerun in `--resume` mode).
 
 ### Per-app sequencing
 

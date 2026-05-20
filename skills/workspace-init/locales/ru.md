@@ -50,10 +50,28 @@ Workspace-зависимости (мультивыбор):
 Генерировать Example/ (xcodegen, Cluster 3)?
 
 ## qa_tasks_enabled
-Создать общий Tasks/-репо на уровне workspace-parent (рядом с packages и project-репо)? (Y/N, по умолчанию Y)
+Создать общую Tasks/-папку на уровне workspace-parent (рядом с packages и project-репо)? (Y/N, по умолчанию Y)
+
+## qa_tasks_mode
+Как создавать Tasks/? [sibling = mkdir + git init внутри workspace-parent (по умолчанию) | path = то же, но по произвольному относительному пути | symlink = ln -s на внешнюю папку]
 
 ## qa_tasks_path
 Путь к Tasks/ (относительно workspace-parent, по умолчанию ./Tasks):
+
+## qa_tasks_symlink_target
+Цель symlink для Tasks/ (относительный путь с .. или абсолютный, например ../../Tasks):
+
+## qa_docs_enabled
+Создать общую Docs/-папку на уровне workspace-parent (рядом с packages и project-репо)? (Y/N, по умолчанию Y)
+
+## qa_docs_mode
+Как создавать Docs/? [sibling = mkdir + git init внутри workspace-parent (по умолчанию) | path = то же, но по произвольному относительному пути | symlink = ln -s на внешнюю папку]
+
+## qa_docs_path
+Путь к Docs/ (относительно workspace-parent, по умолчанию ./Docs):
+
+## qa_docs_symlink_target
+Цель symlink для Docs/ (относительный путь с .. или абсолютный, например ../../Docs):
 
 ## qa_bootstrap_use_gh
 Создавать GitHub-репо через gh?

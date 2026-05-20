@@ -50,10 +50,28 @@ Workspace-internal deps (multiselect):
 Generate Example/ (xcodegen, Cluster 3)?
 
 ## qa_tasks_enabled
-Provision a shared Tasks/ repo at the workspace-parent level (sibling to packages and project repos)? (Y/N, default Y)
+Provision a shared Tasks/ folder at the workspace-parent level (sibling to packages and project repos)? (Y/N, default Y)
+
+## qa_tasks_mode
+How should Tasks/ be created? [sibling = mkdir + git init inside workspace-parent (default) | path = same, but at a custom relative path | symlink = ln -s to an external folder]
 
 ## qa_tasks_path
 Tasks/ directory path (relative to workspace-parent, default ./Tasks):
+
+## qa_tasks_symlink_target
+Symlink target for Tasks/ (relative path with .. or absolute, e.g. ../../Tasks):
+
+## qa_docs_enabled
+Provision a shared Docs/ folder at the workspace-parent level (sibling to packages and project repos)? (Y/N, default Y)
+
+## qa_docs_mode
+How should Docs/ be created? [sibling = mkdir + git init inside workspace-parent (default) | path = same, but at a custom relative path | symlink = ln -s to an external folder]
+
+## qa_docs_path
+Docs/ directory path (relative to workspace-parent, default ./Docs):
+
+## qa_docs_symlink_target
+Symlink target for Docs/ (relative path with .. or absolute, e.g. ../../Docs):
 
 ## qa_bootstrap_use_gh
 Create GitHub repos via gh?

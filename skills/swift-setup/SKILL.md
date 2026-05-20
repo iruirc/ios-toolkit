@@ -125,10 +125,19 @@ The skill's behavior is determined by the project state, computed from three che
      AUQ using key `auq_create_tasks_structure`.
      ↓ Yes → mkdir -p Tasks/{TODO,ACTIVE,DONE,BACKLOG,RESEARCH,CHECK,UNABLE_FIX}; create .gitkeep in each.
      ↓ No → skip.
-   If Tasks/ exists → tasks_status = `tasks_status_already_existed`.
+   If Tasks/ exists (folder, symlink, or file) → tasks_status = `tasks_status_already_existed` (existing layouts, including manual symlinks, are NEVER overwritten).
+
+5b. Optional Docs/ structure (orthogonal to state):
+   If Docs/ does not exist:
+     AUQ using key `auq_create_docs_structure`.
+     ↓ Yes → mkdir -p Docs/{architecture,api,guides,notes}; create .gitkeep in each.
+     ↓ No → skip.
+   If Docs/ exists (folder, symlink, or file) → docs_status = `docs_status_already_existed` (existing layouts, including manual symlinks, are NEVER overwritten).
+
+   This skill only creates Docs/ as a local folder. For symlink-based Docs/ (sharing one Docs tree across multiple checkouts) use `/workspace-init` and configure `workspace.docs.mode: symlink`.
 
 6. Render report:
-   - States A/B/C → key `report_success_template` with placeholders {q1..q7}, {lang}, {tasks_status}.
+   - States A/B/C → key `report_success_template` with placeholders {q1..q7}, {lang}, {tasks_status}, {docs_status}.
    - State D → key `report_migration_success` with placeholders {moved_sections}, {kept_sections}, {filled_default_sections}, {warnings}, {backup_path}.
 ```
 
@@ -242,6 +251,7 @@ States A / B / C use `report_success_template`. State D uses `report_migration_s
 - **AUQ unavailable** → text fallback with numbered options.
 - **User cancels** (Cancel on AUQ in state C or D) → exit, no disk changes.
 - **Tasks/ already exists** → no overwrite; report `tasks_status_already_existed`.
+- **Docs/ already exists** → no overwrite; report `docs_status_already_existed`.
 
 ## What this skill does NOT do
 

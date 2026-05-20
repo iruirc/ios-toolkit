@@ -80,7 +80,8 @@ wsyml::validate() {
   local ws_name pkg_count pkgs groups remote_list
   local known_archs="api-contract engine library feature"
   local p g d r k pg deps git_keys arch ver allowed a
-  local example_app example_platform tasks_path tasks_enabled author
+  local example_app example_platform tasks_path tasks_enabled tasks_mode tasks_symlink_target author
+  local docs_path docs_enabled docs_mode docs_symlink_target
   local has_project proj_name app_keys ak app_repo
   local v mp_keys mpk mpv
   local -A seen group_set remote_set allowed_set seen_repos
@@ -194,10 +195,16 @@ wsyml::validate() {
     fi
   done
 
-  # Rule 11: workspace.tasks schema. tasks.enabled must be boolean (default true);
-  # tasks.path must be a relative path (resolved relative to workspace-parent, default ./Tasks).
+  # Rule 11: workspace.tasks schema.
+  # - tasks.enabled must be boolean (default true).
+  # - tasks.mode must be one of sibling|path|symlink (default sibling).
+  # - tasks.path must be relative for sibling/path modes (default ./Tasks);
+  #   absolute paths and `..` segments are rejected. Ignored for symlink mode.
+  # - tasks.symlink_target is required (non-empty) for symlink mode; ignored otherwise.
   tasks_path="$(wsyml::get '.workspace.tasks.path' 2>/dev/null || echo './Tasks')"
   tasks_enabled="$(wsyml::get '.workspace.tasks.enabled' 2>/dev/null || echo 'true')"
+  tasks_mode="$(wsyml::get '.workspace.tasks.mode' 2>/dev/null || echo 'sibling')"
+  tasks_symlink_target="$(wsyml::get '.workspace.tasks.symlink_target' 2>/dev/null || echo '')"
   case "$tasks_enabled" in
     true|false) ;;
     *)
@@ -205,8 +212,59 @@ wsyml::validate() {
       ((errs++))
       ;;
   esac
-  if [[ "$tasks_path" = /* ]]; then
-    print -u2 "$_path: tasks.path must be relative to workspace-parent; got absolute '$tasks_path'"
+  case "$tasks_mode" in
+    sibling|path|symlink) ;;
+    *)
+      print -u2 "$_path: tasks.mode must be one of sibling|path|symlink; got '$tasks_mode'"
+      ((errs++))
+      ;;
+  esac
+  if [[ "$tasks_mode" == "sibling" || "$tasks_mode" == "path" ]]; then
+    if [[ "$tasks_path" = /* ]]; then
+      print -u2 "$_path: tasks.path must be relative to workspace-parent; got absolute '$tasks_path'"
+      ((errs++))
+    fi
+    if [[ "$tasks_path" == *..* ]]; then
+      print -u2 "$_path: tasks.path must not contain '..' segments; got '$tasks_path'"
+      ((errs++))
+    fi
+  fi
+  if [[ "$tasks_mode" == "symlink" && -z "$tasks_symlink_target" ]]; then
+    print -u2 "$_path: tasks.mode=symlink requires non-empty tasks.symlink_target"
+    ((errs++))
+  fi
+
+  # Rule 11b: workspace.docs schema. Same rules as tasks (mirrored).
+  docs_path="$(wsyml::get '.workspace.docs.path' 2>/dev/null || echo './Docs')"
+  docs_enabled="$(wsyml::get '.workspace.docs.enabled' 2>/dev/null || echo 'true')"
+  docs_mode="$(wsyml::get '.workspace.docs.mode' 2>/dev/null || echo 'sibling')"
+  docs_symlink_target="$(wsyml::get '.workspace.docs.symlink_target' 2>/dev/null || echo '')"
+  case "$docs_enabled" in
+    true|false) ;;
+    *)
+      print -u2 "$_path: docs.enabled must be boolean (true|false); got '$docs_enabled'"
+      ((errs++))
+      ;;
+  esac
+  case "$docs_mode" in
+    sibling|path|symlink) ;;
+    *)
+      print -u2 "$_path: docs.mode must be one of sibling|path|symlink; got '$docs_mode'"
+      ((errs++))
+      ;;
+  esac
+  if [[ "$docs_mode" == "sibling" || "$docs_mode" == "path" ]]; then
+    if [[ "$docs_path" = /* ]]; then
+      print -u2 "$_path: docs.path must be relative to workspace-parent; got absolute '$docs_path'"
+      ((errs++))
+    fi
+    if [[ "$docs_path" == *..* ]]; then
+      print -u2 "$_path: docs.path must not contain '..' segments; got '$docs_path'"
+      ((errs++))
+    fi
+  fi
+  if [[ "$docs_mode" == "symlink" && -z "$docs_symlink_target" ]]; then
+    print -u2 "$_path: docs.mode=symlink requires non-empty docs.symlink_target"
     ((errs++))
   fi
 

@@ -1,0 +1,8 @@
+workspace:
+  name: docs-symlink-bad
+  docs:
+    enabled: true
+    mode: symlink
+remotes: [origin]
+packages:
+  - { name: A, archetype: api-contract, git: {origin: x}, version: 0.1.0 }
